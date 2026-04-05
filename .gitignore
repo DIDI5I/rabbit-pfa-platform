@@ -1,0 +1,5 @@
+backend/config.php
+node_modules/
+.env
+.vs/
+.DS_Store
