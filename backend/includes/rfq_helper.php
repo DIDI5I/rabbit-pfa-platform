@@ -20,12 +20,16 @@ function createAutoDraftRfq(PDO $pdo, int $componentId, int $ownerUserId): ?int
     $stockQty = (float)$component['stock_qty'];
     $threshold = (float)$component['low_stock_threshold'];
 
+    openRfq(PDO $pdo, int $rfqId): bool
+    acceptRfq(PDO $pdo, int $rfqId, int $ownerUserId, ?string $note = null): bool
+    rejectRfq(PDO $pdo, int $rfqId, int $ownerUserId, ?string $note = null): bool
+    expireRfq(PDO $pdo, int $rfqId): bool
     // Only trigger when below threshold
     if ($stockQty >= $threshold) {
         return null;
     }
 
-    // 2. Check if an open/draft auto-triggered RFQ already exists for this component
+    // 2. Prevent duplicate auto RFQs
     $existingStmt = $pdo->prepare("
         SELECT id
         FROM rfq_requests
@@ -39,7 +43,7 @@ function createAutoDraftRfq(PDO $pdo, int $componentId, int $ownerUserId): ?int
     $existing = $existingStmt->fetch(PDO::FETCH_ASSOC);
 
     if ($existing) {
-        return null; // avoid duplicate auto RFQs
+        return null;
     }
 
     // 3. Get preferred supplier company from part_sources
@@ -59,31 +63,10 @@ function createAutoDraftRfq(PDO $pdo, int $componentId, int $ownerUserId): ?int
 
     $supplierCompanyId = (int)$source['supplier_id'];
 
-    // 4. Resolve supplier company -> supplier user
-    // Assumption for now: supplier user email matches supplier company email
-    $supplierUserStmt = $pdo->prepare("
-        SELECT u.id
-        FROM users u
-        JOIN suppliers s ON s.email = u.email
-        WHERE s.id = :supplier_company_id
-          AND u.role = 'fournisseur'
-          AND u.is_active = TRUE
-        LIMIT 1
-    ");
-    $supplierUserStmt->execute(['supplier_company_id' => $supplierCompanyId]);
-    $supplierUser = $supplierUserStmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$supplierUser) {
-        return null;
-    }
-
-    $supplierUserId = (int)$supplierUser['id'];
-
-    // 5. Compute suggested reorder quantity
-    // simple logic: bring stock back to 2 × threshold
+    // 4. Compute suggested reorder quantity
     $suggestedQty = max(1, (int)ceil(($threshold * 2) - $stockQty));
 
-    // 6. Create draft RFQ
+    // 5. Create draft RFQ
     $insertStmt = $pdo->prepare("
         INSERT INTO rfq_requests
         (
@@ -116,10 +99,12 @@ function createAutoDraftRfq(PDO $pdo, int $componentId, int $ownerUserId): ?int
     $insertStmt->execute([
         'client_id' => $ownerUserId,
         'component_id' => $componentId,
-        'supplier_id' => $supplierUserId,
+        'supplier_id' => $supplierCompanyId,
         'quantity_requested' => $suggestedQty,
         'client_message' => 'Auto-triggered draft RFQ created because stock dropped below threshold.'
     ]);
+
+
 
     return (int)$pdo->lastInsertId();
 }

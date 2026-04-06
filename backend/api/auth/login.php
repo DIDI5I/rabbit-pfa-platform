@@ -20,7 +20,7 @@ if (!$email || !$password) {
 }
 
 $sql = "
-SELECT id, name, email, password_hash, role, company_name, is_active
+SELECT id, name, email, password_hash, role, company_name, is_active, supplier_company_id
 FROM users
 WHERE email = :email
 LIMIT 1
@@ -53,6 +53,9 @@ try {
     $_SESSION['name'] = $user['name'];
     $_SESSION['email'] = $user['email'];
     $_SESSION['role'] = $user['role'];
+    $_SESSION['supplier_company_id'] = isset($user['supplier_company_id'])
+    ? (int)$user['supplier_company_id']
+    : null;
 
     echo json_encode([
         'message' => 'Login successful',
@@ -64,6 +67,8 @@ try {
             'company_name' => $user['company_name']
         ]
     ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
+
 
 } catch (PDOException $e) {
     http_response_code(500);

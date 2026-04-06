@@ -6,6 +6,14 @@ requireRole('fournisseur');
 
 require_once __DIR__ . '/../../includes/db.php';
 
+if (!isset($_SESSION['supplier_company_id']) || $_SESSION['supplier_company_id'] === null) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Supplier account is not linked to a supplier company']);
+    exit;
+}
+
+$supplierCompanyId = (int)$_SESSION['supplier_company_id'];
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['error' => 'Method not allowed']);
@@ -38,7 +46,7 @@ if ($quotedPrice <= 0) {
 try {
     $pdo->beginTransaction();
 
-    // 1. Verify RFQ exists and belongs to this supplier user
+    // 1. Verify RFQ exists and belongs to this supplier company
     $rfqStmt = $pdo->prepare("
         SELECT id, supplier_id, revision_id, status
         FROM rfq_requests
@@ -52,7 +60,7 @@ try {
         throw new Exception('RFQ not found');
     }
 
-    if ((int)$rfq['supplier_id'] !== (int)$_SESSION['user_id']) {
+    if ((int)$rfq['supplier_id'] !== $supplierCompanyId) {
         throw new Exception('Not authorized to respond to this RFQ');
     }
 
@@ -69,7 +77,7 @@ try {
     ");
     $revStmt->execute([
         'rfq_id' => $rfqId,
-        'supplier_id' => $_SESSION['user_id']
+        'supplier_id' => $supplierCompanyId
     ]);
     $revRow = $revStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -100,7 +108,7 @@ try {
     $insertRevision->execute([
         'rfq_id' => $rfqId,
         'revision_id' => $nextRevision,
-        'supplier_id' => $_SESSION['user_id'],
+        'supplier_id' => $supplierCompanyId,
         'quoted_price' => $quotedPrice,
         'lead_time_days' => $leadTimeDays,
         'supplier_note' => $supplierNote
@@ -135,7 +143,9 @@ try {
     ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
 } catch (Exception $e) {
-    $pdo->rollBack();
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
 
     http_response_code(400);
     echo json_encode([
