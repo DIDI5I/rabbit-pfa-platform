@@ -10,8 +10,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$email = $_POST['email'] ?? null;
-$password = $_POST['password'] ?? null;
+$data = json_decode(file_get_contents('php://input'), true);
+
+$email = isset($data['email']) ? trim($data['email']) : null;
+$password = $data['password'] ?? null;
 
 if (!$email || !$password) {
     http_response_code(400);

@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../includes/auth_check.php';
 require_once __DIR__ . '/../../includes/db.php';
+require_once __DIR__ . '/../../includes/rfq_helper.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -42,46 +43,11 @@ if ($rfqId <= 0) {
 try {
     $pdo->beginTransaction();
 
-    // 1. Fetch RFQ
-    $stmt = $pdo->prepare("
-        SELECT id, status, quoted_price, revision_id, supplier_id, client_id
-        FROM rfq_requests
-        WHERE id = :id
-        LIMIT 1
-    ");
-    $stmt->execute(['id' => $rfqId]);
-    $rfq = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$rfq) {
-        throw new Exception('RFQ not found');
-    }
-
-    // 2. Only quoted RFQs can be accepted
-    if ($rfq['status'] !== 'quoted') {
-        throw new Exception("Only quoted RFQs can be accepted. Current status: {$rfq['status']}");
-    }
-
-    // 3. Update RFQ status
-    $updateStmt = $pdo->prepare("
-        UPDATE rfq_requests
-        SET
-            status = 'accepted',
-            updated_at = NOW()
-        WHERE id = :id
-    ");
-    $updateStmt->execute(['id' => $rfqId]);
-
-    $pdo->commit();
+    $result = acceptRfq($pdo, $rfqId, (int)$_SESSION['user_id'], $decisionNote);
 
     echo json_encode([
-        'message' => 'RFQ accepted successfully',
-        'rfq_id' => $rfqId,
-        'previous_status' => 'quoted',
-        'new_status' => 'accepted',
-        'quoted_price' => isset($rfq['quoted_price']) ? (float)$rfq['quoted_price'] : null,
-        'revision_id' => isset($rfq['revision_id']) ? (int)$rfq['revision_id'] : null,
-        'decision_note' => $decisionNote
-    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    'message' => 'RFQ accepted successfully'
+] + $result, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
 } catch (Exception $e) {
     if ($pdo->inTransaction()) {
@@ -89,7 +55,5 @@ try {
     }
 
     http_response_code(400);
-    echo json_encode([
-        'error' => $e->getMessage()
-    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    echo json_encode(['error' => $e->getMessage()]);
 }

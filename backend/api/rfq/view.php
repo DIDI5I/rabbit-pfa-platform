@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../includes/auth_check.php';
 require_once __DIR__ . '/../../includes/db.php';
+require_once __DIR__ . '/../../includes/rfq_helper.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     http_response_code(405);
@@ -31,22 +32,24 @@ $supplierCompanyId = $_SESSION['supplier_company_id'] ?? null;
 try {
     // 1. Get RFQ main record
     $stmt = $pdo->prepare("
-        SELECT
-            rfq.*,
-            c.name AS component_name,
-            c.sku,
-            c.stock_qty,
-            c.low_stock_threshold,
-            cu.name AS client_name,
-            cu.email AS client_email,
-            s.name AS supplier_name
-        FROM rfq_requests rfq
-        JOIN components c ON c.id = rfq.component_id
-        LEFT JOIN users cu ON cu.id = rfq.client_id
-        LEFT JOIN suppliers s ON s.id = rfq.supplier_id
-        WHERE rfq.id = :id
-        LIMIT 1
-    ");
+    SELECT
+        rfq.*,
+        c.name AS component_name,
+        c.sku,
+        c.stock_qty,
+        c.low_stock_threshold,
+        cu.name AS client_name,
+        cu.email AS client_email,
+        s.name AS supplier_name,
+        du.name AS decided_by_name
+    FROM rfq_requests rfq
+    JOIN components c ON c.id = rfq.component_id
+    LEFT JOIN users cu ON cu.id = rfq.client_id
+    LEFT JOIN suppliers s ON s.id = rfq.supplier_id
+    LEFT JOIN users du ON du.id = rfq.decided_by
+    WHERE rfq.id = :id
+    LIMIT 1
+");
     $stmt->execute(['id' => $rfqId]);
     $rfq = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -111,6 +114,7 @@ try {
     $rfq['auto_triggered'] = isset($rfq['auto_triggered']) ? (bool)$rfq['auto_triggered'] : false;
     $rfq['stock_qty'] = isset($rfq['stock_qty']) ? (float)$rfq['stock_qty'] : null;
     $rfq['low_stock_threshold'] = isset($rfq['low_stock_threshold']) ? (float)$rfq['low_stock_threshold'] : null;
+    $rfq['allowed_actions'] = getAllowedRfqActions($role, $rfq);
 
     // 5. Normalize revisions
     foreach ($revisions as &$rev) {

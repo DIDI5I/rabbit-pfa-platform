@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../includes/auth_check.php';
 require_once __DIR__ . '/../../includes/db.php';
+require_once __DIR__ . '/../../includes/rfq_helper.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -41,44 +42,13 @@ if ($rfqId <= 0) {
 try {
     $pdo->beginTransaction();
 
-    // 1. Fetch RFQ
-    $stmt = $pdo->prepare("
-        SELECT id, status, auto_triggered
-        FROM rfq_requests
-        WHERE id = :id
-        LIMIT 1
-    ");
-    $stmt->execute(['id' => $rfqId]);
-    $rfq = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$rfq) {
-        throw new Exception('RFQ not found');
-    }
-
-    // 2. Only draft RFQs can be opened
-    if ($rfq['status'] !== 'draft') {
-        throw new Exception("Only draft RFQs can be opened. Current status: {$rfq['status']}");
-    }
-
-    // 3. Update status
-    $updateStmt = $pdo->prepare("
-        UPDATE rfq_requests
-        SET
-            status = 'open',
-            updated_at = NOW()
-        WHERE id = :id
-    ");
-    $updateStmt->execute(['id' => $rfqId]);
+    $result = openRfq($pdo, $rfqId);
 
     $pdo->commit();
 
     echo json_encode([
-        'message' => 'RFQ opened successfully',
-        'rfq_id' => $rfqId,
-        'previous_status' => 'draft',
-        'new_status' => 'open',
-        'auto_triggered' => isset($rfq['auto_triggered']) ? (bool)$rfq['auto_triggered'] : false
-    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        'message' => 'RFQ opened successfully'
+    ] + $result, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
 } catch (Exception $e) {
     if ($pdo->inTransaction()) {
@@ -86,7 +56,5 @@ try {
     }
 
     http_response_code(400);
-    echo json_encode([
-        'error' => $e->getMessage()
-    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    echo json_encode(['error' => $e->getMessage()]);
 }
