@@ -305,6 +305,20 @@ class ChatbotService
         }
 
         if ($intent === 'cancel_write_action') {
+            (new \App\Services\Chatbot\WriteActions\WriteActionLogger())->log([
+                'user_id' => $identity['user_id'] ?? null,
+                'role' => $identity['role'] ?? 'guest',
+                'intent' => $action['intent'] ?? null,
+                'tool' => $action['tool'] ?? null,
+                'action_id' => $action['action_id'] ?? null,
+                'status' => 'cancelled',
+                'risk_level' => $action['risk_level'] ?? null,
+                'confirmed' => false,
+                'executed' => false,
+                'cancelled' => true,
+                'params_summary' => $action['params'] ?? [],
+            ]);
+
             $store->clear();
 
             return $this->finalizeResponse(
@@ -313,7 +327,36 @@ class ChatbotService
             );
         }
 
+        (new \App\Services\Chatbot\WriteActions\WriteActionLogger())->log([
+            'user_id' => $identity['user_id'] ?? null,
+            'role' => $identity['role'] ?? 'guest',
+            'intent' => $action['intent'] ?? null,
+            'tool' => $action['tool'] ?? null,
+            'action_id' => $action['action_id'] ?? null,
+            'status' => 'confirmed',
+            'risk_level' => $action['risk_level'] ?? null,
+            'confirmed' => true,
+            'executed' => false,
+            'cancelled' => false,
+            'params_summary' => $action['params'] ?? [],
+        ]);
+
         $result = (new WriteActionExecutor())->execute($identity, $action);
+
+        (new \App\Services\Chatbot\WriteActions\WriteActionLogger())->log([
+            'user_id' => $identity['user_id'] ?? null,
+            'role' => $identity['role'] ?? 'guest',
+            'intent' => $action['intent'] ?? null,
+            'tool' => $action['tool'] ?? null,
+            'action_id' => $action['action_id'] ?? null,
+            'status' => ($result['executed'] ?? false) ? 'executed' : 'execution_failed',
+            'risk_level' => $action['risk_level'] ?? null,
+            'confirmed' => true,
+            'executed' => (bool) ($result['executed'] ?? false),
+            'cancelled' => false,
+            'params_summary' => $action['params'] ?? [],
+            'error' => ($result['executed'] ?? false) ? null : ($result['answer'] ?? 'Execution failed'),
+        ]);
 
         if (($result['executed'] ?? false) === true) {
             $store->clear();

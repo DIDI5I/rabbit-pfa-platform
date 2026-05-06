@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Services\Chatbot\WriteActions;
+use App\Services\Chatbot\WriteActions\WriteActionLogger;
 
 class PendingActionStore
 {
@@ -27,6 +28,22 @@ class PendingActionStore
 
             'expires_at' => time() + ($action['ttl_seconds'] ?? 300),
         ];
+
+        $pending = $_SESSION[self::SESSION_KEY];
+
+        (new WriteActionLogger())->log([
+            'user_id' => $pending['user_id'] ?? null,
+            'role' => $pending['role'] ?? 'guest',
+            'intent' => $pending['intent'] ?? null,
+            'tool' => $pending['tool'] ?? null,
+            'action_id' => $pending['action_id'] ?? null,
+            'status' => 'preview_created',
+            'risk_level' => $pending['risk_level'] ?? null,
+            'confirmed' => false,
+            'executed' => false,
+            'cancelled' => false,
+            'params_summary' => $pending['params'] ?? [],
+        ]);
     }
 
     public function get(array $identity): ?array
@@ -38,6 +55,20 @@ class PendingActionStore
         }
 
         if ($this->isExpired($action)) {
+            (new WriteActionLogger())->log([
+                'user_id' => $action['user_id'] ?? null,
+                'role' => $action['role'] ?? 'guest',
+                'intent' => $action['intent'] ?? null,
+                'tool' => $action['tool'] ?? null,
+                'action_id' => $action['action_id'] ?? null,
+                'status' => 'expired',
+                'risk_level' => $action['risk_level'] ?? null,
+                'confirmed' => false,
+                'executed' => false,
+                'cancelled' => false,
+                'params_summary' => $action['params'] ?? [],
+            ]);
+
             $this->clear();
             return null;
         }
