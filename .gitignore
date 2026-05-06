@@ -1,5 +1,29 @@
+<<<<<<< HEAD
 backend/config.php
 node_modules/
 .env
 .vs/
 .DS_Store
+=======
+# Local configuration / secrets
+config.php
+
+# Environment files
+.env
+.env.*
+
+# Logs
+*.log
+logs/
+storage/logs/
+
+# Dependencies
+/vendor/
+/node_modules/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+>>>>>>> 41a4d69 (Ignore local config and add config example)
