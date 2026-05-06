@@ -109,9 +109,16 @@ class ChatbotService
                     'permission_status' => 'denied',
                 ]
             );
+
         }
 
-        if (in_array($intent, ['mark_all_notifications_read', 'mark_notification_read'], true)) {
+        if (in_array($intent, [
+                'mark_all_notifications_read',
+                'mark_notification_read',
+                'reject_rfq',
+            ], true)) 
+        {
+            
             $toolResult = (new ToolExecutor())->execute($intent, $params, $identity, $context);
 
             $logger->log([

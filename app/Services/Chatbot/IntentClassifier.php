@@ -26,6 +26,7 @@ use App\Services\Chatbot\Intent\StockIntelligenceDashboardIntentDetector;
 use App\Services\Chatbot\Intent\ConfirmActionIntentDetector;
 use App\Services\Chatbot\Intent\CancelActionIntentDetector;
 use App\Services\Chatbot\WriteActions\Notification\NotificationWriteIntentDetector;
+use App\Services\Chatbot\WriteActions\Rfq\RfqWriteIntentDetector;
 
 class IntentClassifier
 {
@@ -40,10 +41,12 @@ class IntentClassifier
             new ConfirmActionIntentDetector(),
             new CancelActionIntentDetector(),
             new NotificationWriteIntentDetector(),
-            
+
             new HelpIntentDetector(),
             new ClarificationIntentDetector(),
             new NotificationIntentDetector(),
+
+            new RfqWriteIntentDetector(),
             new RfqIntentDetector(),
  
             new ProductIntelligenceIntentDetector(),

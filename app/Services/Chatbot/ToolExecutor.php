@@ -40,6 +40,7 @@ use App\Services\Chatbot\Tools\StockIntelligenceDashboard\StockIntelligenceSumma
 use App\Services\Chatbot\Tools\StockIntelligenceDashboard\StockIntelligenceDashboardExplanationTool;
 use App\Services\Chatbot\WriteActions\Notification\MarkAllNotificationsReadPreviewTool;
 use App\Services\Chatbot\WriteActions\Notification\MarkNotificationReadPreviewTool;
+use App\Services\Chatbot\WriteActions\Rfq\RejectRfqPreviewTool;
 use Throwable;
 
 class ToolExecutor
@@ -56,6 +57,8 @@ class ToolExecutor
             new ClarificationTool(),
             new NavigationTool(),
             new ShowMoreTool(),
+
+            new RejectRfqPreviewTool(),
 
             new RfqSummaryTool(),
             new RfqDetailsTool(),

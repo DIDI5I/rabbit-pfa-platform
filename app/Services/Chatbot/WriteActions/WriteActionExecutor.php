@@ -5,7 +5,7 @@ namespace App\Services\Chatbot\WriteActions;
 use App\Services\Chatbot\WriteActions\Contracts\PendingActionExecutorInterface;
 use App\Services\Chatbot\WriteActions\Notification\MarkAllNotificationsReadExecutor;
 use App\Services\Chatbot\WriteActions\Notification\MarkNotificationReadExecutor;
-
+use App\Services\Chatbot\WriteActions\Rfq\RejectRfqExecutor;
 class WriteActionExecutor
 {
     /** @var PendingActionExecutorInterface[] */
@@ -16,6 +16,7 @@ class WriteActionExecutor
         $this->executors = [
             new MarkAllNotificationsReadExecutor(),
             new MarkNotificationReadExecutor(),
+            new RejectRfqExecutor(),
         ];
     }
 
