@@ -358,9 +358,7 @@ class ChatbotService
             'error' => ($result['executed'] ?? false) ? null : ($result['answer'] ?? 'Execution failed'),
         ]);
 
-        if (($result['executed'] ?? false) === true) {
-            $store->clear();
-        }
+        $store->clear();
 
         return $this->finalizeResponse(
             $builder->confirmed($identity, $action, $result),

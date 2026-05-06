@@ -117,11 +117,23 @@ class NotificationService
 
     public function markAsRead(int $notificationId): array
     {
-        $this->notificationRepository->markAsRead(
+        $updated = $this->notificationRepository->markAsRead(
             $notificationId,
             Auth::id(),
             Auth::role()
         );
+
+        if (!$updated) {
+            return ApiResponse::error(
+                'Notification not found or not accessible',
+                [
+                    'notification' => [
+                        'Notification not found, already read, or not accessible for your account.',
+                    ],
+                ],
+                404
+            );
+        }
 
         return ApiResponse::success(
             'Notification marked as read successfully',
@@ -134,7 +146,7 @@ class NotificationService
 
     public function markAllAsRead(): array
     {
-        $this->notificationRepository->markAllAsRead(
+        $updatedCount = $this->notificationRepository->markAllAsRead(
             Auth::id(),
             Auth::role()
         );
@@ -143,6 +155,7 @@ class NotificationService
             'All notifications marked as read successfully',
             [
                 'updated' => true,
+                'updated_count' => $updatedCount,
             ]
         );
     }

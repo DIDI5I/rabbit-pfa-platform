@@ -55,10 +55,18 @@ class WriteActionResponseBuilder
 
     public function confirmed(array $identity, array $action, array $result): array
     {
+        $executed = (bool) ($result['executed'] ?? false);
+
         return [
-            'message' => 'Chatbot action executed successfully.',
+            'message' => $executed
+                ? 'Chatbot action executed successfully.'
+                : 'Chatbot action could not be executed.',
             'data' => [
-                'answer' => $result['answer'] ?? 'Confirmed. The action was executed successfully.',
+                'answer' => $result['answer'] ?? (
+                    $executed
+                        ? 'Confirmed. The action was executed successfully.'
+                        : 'Confirmed, but the action could not be executed.'
+                ),
                 'ai_refined' => false,
 
                 'intent' => $action['intent'] ?? 'write_action',
@@ -71,24 +79,23 @@ class WriteActionResponseBuilder
 
                 'result_meta' => [
                     'pending_action' => false,
-                    'executed' => true,
+                    'executed' => $executed,
                     'action_id' => $action['action_id'] ?? null,
                     'tool' => $action['tool'] ?? null,
                 ],
 
-                'sources' => [
+                'sources' => $result['sources'] ?? [
                     [
                         'tool' => $action['tool'] ?? ($action['intent'] ?? 'write_action'),
-                        'status' => 'executed',
+                        'status' => $executed ? 'executed' : 'execution_failed',
                     ],
                 ],
 
-                'limitations' => [],
+                'limitations' => $result['limitations'] ?? [],
                 'suggested_actions' => $result['suggested_actions'] ?? [],
             ],
         ];
     }
-
     public function cancelled(array $identity, ?array $action = null): array
     {
         return [

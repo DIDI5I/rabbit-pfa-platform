@@ -48,6 +48,11 @@ class Repository
         return (int) $this->connection->lastInsertId();
     }
 
+    public function affectedRows(): int
+    {
+        return $this->statement?->rowCount() ?? 0;
+    }
+
     public function beginTransaction(): void
     {
         $this->connection->beginTransaction();

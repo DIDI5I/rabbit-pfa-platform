@@ -100,15 +100,17 @@ class NotificationRepository extends Repository
             $role,
         ]);
 
-        return true;
+        return $this->affectedRows() > 0;
     }
 
-    public function markAllAsRead(int $userId, string $role): void
+    public function markAllAsRead(int $userId, string $role): int
     {
         $this->query(NotificationQuery::markAllAsRead(), [
             $userId,
             $role,
         ]);
+
+        return $this->affectedRows();
     }
 
     private function castNotificationRow(array $row): array

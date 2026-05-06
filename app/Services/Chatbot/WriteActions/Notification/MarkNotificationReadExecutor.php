@@ -18,6 +18,34 @@ class MarkNotificationReadExecutor implements PendingActionExecutorInterface
 
         $result = (new NotificationService())->markAsRead($notificationId);
 
+        $isSuccess = ($result['message'] ?? null) === 'Notification marked as read successfully';
+
+        if (!$isSuccess) {
+            return [
+                'executed' => false,
+                'answer' => "Notification #{$notificationId} was not found, was already read, or is not accessible.",
+                'summary' => [
+                    'updated' => false,
+                    'action' => 'mark_notification_read',
+                    'notification_id' => $notificationId,
+                    'service_message' => $result['message'] ?? null,
+                ],
+                'items_preview' => [],
+                'sources' => [
+                    [
+                        'tool' => 'mark_notification_read',
+                        'status' => 'not_found_or_not_accessible',
+                    ],
+                ],
+                'limitations' => [
+                    'No notification was updated.',
+                ],
+                'suggested_actions' => [
+                    'Show notifications',
+                ],
+            ];
+        }
+
         return [
             'executed' => true,
             'answer' => "Confirmed. Notification #{$notificationId} was marked as read.",
