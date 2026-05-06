@@ -25,6 +25,8 @@ use App\Services\Chatbot\Intent\OrderIntentDetector;
 use App\Services\Chatbot\Intent\StockIntelligenceDashboardIntentDetector;
 use App\Services\Chatbot\Intent\ConfirmActionIntentDetector;
 use App\Services\Chatbot\Intent\CancelActionIntentDetector;
+use App\Services\Chatbot\WriteActions\Notification\NotificationWriteIntentDetector;
+
 class IntentClassifier
 {
     /**
@@ -37,7 +39,8 @@ class IntentClassifier
         $this->detectors = [
             new ConfirmActionIntentDetector(),
             new CancelActionIntentDetector(),
-
+            new NotificationWriteIntentDetector(),
+            
             new HelpIntentDetector(),
             new ClarificationIntentDetector(),
             new NotificationIntentDetector(),

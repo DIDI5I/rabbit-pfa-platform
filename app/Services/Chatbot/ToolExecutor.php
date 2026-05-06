@@ -38,6 +38,8 @@ use App\Services\Chatbot\Tools\Order\OrdersByStatusTool;
 use App\Services\Chatbot\Tools\Order\OrderDetailsTool;
 use App\Services\Chatbot\Tools\StockIntelligenceDashboard\StockIntelligenceSummaryTool;
 use App\Services\Chatbot\Tools\StockIntelligenceDashboard\StockIntelligenceDashboardExplanationTool;
+use App\Services\Chatbot\WriteActions\Notification\MarkAllNotificationsReadPreviewTool;
+use App\Services\Chatbot\WriteActions\Notification\MarkNotificationReadPreviewTool;
 use Throwable;
 
 class ToolExecutor
@@ -59,6 +61,9 @@ class ToolExecutor
             new RfqDetailsTool(),
             new RfqsByStatusTool(),
             new RfqAllowedActionsTool(),
+
+            new MarkAllNotificationsReadPreviewTool(),
+            new MarkNotificationReadPreviewTool(),
 
             new NotificationSummaryTool(),
             new UnreadNotificationsTool(),

@@ -4,6 +4,10 @@ namespace App\Services\Chatbot;
 
 use App\Services\Chatbot\Ai\AiAnswerRefiner;
 
+use App\Services\Chatbot\WriteActions\PendingActionStore;
+use App\Services\Chatbot\WriteActions\WriteActionExecutor;
+use App\Services\Chatbot\WriteActions\WriteActionResponseBuilder;
+
 class ChatbotService
 {
     public function handle(string $message, array $context = []): array
@@ -52,49 +56,6 @@ class ChatbotService
 
         if (in_array($intent, ['confirm_write_action', 'cancel_write_action'], true)) {
             return $this->handlePendingWriteActionIntent($intent, $identity);
-        }
-
-        if ($operationType === 'write_action') {
-            $logger->log([
-                'user_id' => $identity['user_id'] ?? null,
-                'role' => $identity['role'] ?? 'guest',
-                'message' => $message,
-                'intent' => $intent,
-                'tool' => $toolDefinition['tool'] ?? $intent,
-                'status' => 'blocked_write_action',
-                'operation_type' => 'write_action',
-                'permission_status' => 'blocked',
-                'error' => 'Write actions are disabled in Chatbot V1.',
-            ]);
-
-            $response = [
-                'message' => 'Chatbot action not supported yet.',
-                'data' => [
-                    'answer' => 'I can retrieve and explain information, but I cannot perform write actions yet.',
-                    'intent' => $intent,
-                    'confidence' => $classification['confidence'] ?? 'medium',
-                    'role' => $identity['role'] ?? 'guest',
-                    'operation_type' => 'write_action',
-                    'sources' => [],
-                    'limitations' => [
-                        'Write actions are disabled in Chatbot V1.',
-                    ],
-                    'suggested_actions' => [],
-                ],
-            ];
-
-            return $this->finalizeResponse(
-                $response,
-                $identity,
-                $logger,
-                [
-                    'message' => $message,
-                    'intent' => $intent,
-                    'tool' => $toolDefinition['tool'] ?? $intent,
-                    'operation_type' => 'write_action',
-                    'permission_status' => 'blocked',
-                ]
-            );
         }
 
         $guard = new PermissionGuard();
@@ -150,6 +111,84 @@ class ChatbotService
             );
         }
 
+        if (in_array($intent, ['mark_all_notifications_read', 'mark_notification_read'], true)) {
+            $toolResult = (new ToolExecutor())->execute($intent, $params, $identity, $context);
+
+            $logger->log([
+                'user_id' => $identity['user_id'] ?? null,
+                'role' => $identity['role'] ?? 'guest',
+                'message' => $message,
+                'intent' => $intent,
+                'tool' => $toolResult['tool'] ?? ($toolDefinition['tool'] ?? $intent),
+                'status' => $toolResult['status'] ?? 'pending_confirmation',
+                'operation_type' => 'write_action',
+                'permission_status' => 'pending_confirmation',
+                'error' => !empty($toolResult['errors'])
+                    ? json_encode($toolResult['errors'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                    : null,
+            ]);
+
+            return $this->finalizeResponse(
+                $toolResult,
+                $identity,
+                $logger,
+                [
+                    'message' => $message,
+                    'intent' => $intent,
+                    'tool' => $toolResult['tool'] ?? ($toolDefinition['tool'] ?? $intent),
+                    'operation_type' => 'write_action',
+                    'permission_status' => 'pending_confirmation',
+                ]
+            );
+        }
+
+        if ($operationType === 'write_action') {
+            $logger->log([
+                'user_id' => $identity['user_id'] ?? null,
+                'role' => $identity['role'] ?? 'guest',
+                'message' => $message,
+                'intent' => $intent,
+                'tool' => $toolDefinition['tool'] ?? $intent,
+                'status' => 'blocked_write_action',
+                'operation_type' => 'write_action',
+                'permission_status' => 'blocked',
+                'error' => 'Write action has no confirmation preview handler.',
+            ]);
+
+            $response = [
+                'message' => 'Chatbot action not supported yet.',
+                'data' => [
+                    'answer' => 'I can retrieve and explain information, but this write action is not supported yet.',
+                    'ai_refined' => false,
+                    'intent' => $intent,
+                    'confidence' => $classification['confidence'] ?? 'medium',
+                    'role' => $identity['role'] ?? 'guest',
+                    'operation_type' => 'write_action',
+                    'summary' => [],
+                    'items_preview' => [],
+                    'result_meta' => [],
+                    'sources' => [],
+                    'limitations' => [
+                        'This write action does not have a confirmation preview handler yet.',
+                    ],
+                    'suggested_actions' => [],
+                ],
+            ];
+
+            return $this->finalizeResponse(
+                $response,
+                $identity,
+                $logger,
+                [
+                    'message' => $message,
+                    'intent' => $intent,
+                    'tool' => $toolDefinition['tool'] ?? $intent,
+                    'operation_type' => 'write_action',
+                    'permission_status' => 'blocked',
+                ]
+            );
+        }
+
         $toolResult = (new ToolExecutor())->execute($intent, $params, $identity, $context);
 
         $logger->log([
@@ -183,7 +222,6 @@ class ChatbotService
             ]
         );
     }
-
     private function fail(array $identity, string $intent, string $reason): array
     {
         return [
@@ -252,10 +290,10 @@ class ChatbotService
         return $response;
         }
 
-        private function handlePendingWriteActionIntent(string $intent, array $identity): array
+    private function handlePendingWriteActionIntent(string $intent, array $identity): array
     {
-        $store = new \App\Services\Chatbot\WriteActions\PendingActionStore();
-        $builder = new \App\Services\Chatbot\WriteActions\WriteActionResponseBuilder();
+        $store = new PendingActionStore();
+        $builder = new WriteActionResponseBuilder();
 
         $action = $store->get($identity);
 
@@ -275,44 +313,14 @@ class ChatbotService
             );
         }
 
-        /*
-        * Stage 11A.1 does not execute actions yet.
-        * Real execution comes in 11A.3+.
-        */
+        $result = (new WriteActionExecutor())->execute($identity, $action);
+
+        if (($result['executed'] ?? false) === true) {
+            $store->clear();
+        }
+
         return $this->finalizeResponse(
-            [
-                'message' => 'Chatbot action confirmation received.',
-                'data' => [
-                    'answer' => 'Confirmation received, but this action executor is not implemented yet. No changes were made.',
-                    'ai_refined' => false,
-                    'intent' => $action['intent'] ?? 'confirm_write_action',
-                    'confidence' => 'high',
-                    'role' => $identity['role'] ?? 'guest',
-                    'operation_type' => 'write_action',
-                    'summary' => [
-                        'confirmed' => true,
-                        'executed' => false,
-                    ],
-                    'items_preview' => [],
-                    'result_meta' => [
-                        'pending_action' => true,
-                        'action_id' => $action['action_id'] ?? null,
-                        'executor_implemented' => false,
-                    ],
-                    'sources' => [
-                        [
-                            'tool' => $action['tool'] ?? 'write_action',
-                            'status' => 'confirmation_received',
-                        ],
-                    ],
-                    'limitations' => [
-                        'The confirmation pipeline exists, but this executor is not implemented yet.',
-                    ],
-                    'suggested_actions' => [
-                        'Cancel',
-                    ],
-                ],
-            ],
+            $builder->confirmed($identity, $action, $result),
             $identity
         );
     }
