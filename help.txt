@@ -1,0 +1,106 @@
+backend/
+  public/
+    index.php              <-- single entry point
+
+  app/
+    Core/
+      Router.php
+      Request.php
+      Response.php
+      Database.php
+      Auth.php
+
+    Controllers/
+      ChatController.php
+      ProductController.php
+      AuthController.php
+
+    Services/
+      ChatService.php
+      IntentParserService.php
+      LLMService.php
+
+    Repositories/
+      ProductRepository.php
+      SupplierRepository.php
+      UserRepository.php
+
+    Forms/
+      ChatRequest.php
+      ChatResponse.php
+
+    Support/
+      Logger.php
+
+    Config/
+      app.php
+      database.php
+      services.php
+      routes.php
+
+  storage/
+    logs/
+      chat.log
+
+  bootstrap.php
+
+  .env                    <-- VERY IMPORTANT
+  .gitignore
+
+
+
+  //DOCS STRUCTURE
+
+  # Title
+
+## 1. Purpose
+
+## 2. Endpoint / Scope
+
+## 3. Architecture Flow
+
+## 4. Files Involved
+
+## 5. Functionality
+
+## 6. Request Structure
+
+## 7. Response Structure
+
+## 8. Tests
+
+## 9. Edge Cases
+
+## 10. Notes / Future Work
+
+
+docs/
+
+  auth/
+    login.md
+    auth-flow.md
+
+  products/
+    products-index.md
+    products-query-refactor.md
+    product-request.md
+    product-data-model.md
+
+  cost-rollup/
+    cost-rollup.md
+
+  core/
+    routing.md
+    validation.md
+    repository-pattern.md
+    error-handling.md
+    middleware.md
+
+
+  {
+    "name": "Iberica Sealing Contact",
+    "email": "iberica.sealing@rabbit.local",
+    "password": "Password123!",
+    "role": "fournisseur",
+    "supplier_company_id": 8
+  }

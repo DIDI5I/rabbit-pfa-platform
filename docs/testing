@@ -1,0 +1,17 @@
+# Testing Strategy
+
+## Order
+
+1. Auth
+2. Products
+3. Dependencies
+4. Cost Rollup
+5. RFQ
+6. Auto RFQ
+
+## Check
+
+- response format consistency
+- validation errors
+- role restrictions
+- lifecycle transitions

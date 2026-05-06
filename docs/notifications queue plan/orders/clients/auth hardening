@@ -1,0 +1,661 @@
+# Rabbit Backend Update — Order/Client Authorization Hardening Completed
+
+## Status
+
+Order/client authorization hardening is now implemented and tested successfully.
+
+The order module is now role-aware for V1.
+
+---
+
+## Purpose
+
+The goal was to prevent order data leaks and prevent clients/suppliers from performing unauthorized order actions.
+
+Before hardening, the order module had these risks:
+
+```text
+GET /orders could expose all orders.
+GET /orders/{orderId} could expose another client's order.
+POST /orders trusted client_id from the request body.
+PATCH /orders/{orderId}/status needed strict owner-only protection.
+Suppliers could potentially reach order endpoints if not blocked.
+
+After hardening:
+
+Owner can manage all orders.
+Client can only create and view their own orders.
+Supplier cannot access orders.
+Only owner can update order status.
+Final Authorization Rules
+Owner
+GET /orders
+→ sees all orders
+
+GET /orders/{orderId}
+→ can view any order
+
+POST /orders
+→ can create an order for a chosen client by sending client_id
+
+PATCH /orders/{orderId}/status
+→ can update order status
+Client
+GET /orders
+→ sees only their own orders
+
+GET /orders/{orderId}
+→ can view only their own order
+
+POST /orders
+→ creates order for themselves
+
+PATCH /orders/{orderId}/status
+→ forbidden
+
+Important rule:
+
+When the logged-in user is a client, the backend ignores client_id from the request body and uses Auth::id().
+Fournisseur / Supplier
+GET /orders
+→ forbidden
+
+GET /orders/{orderId}
+→ forbidden
+
+POST /orders
+→ forbidden
+
+PATCH /orders/{orderId}/status
+→ forbidden
+
+Suppliers have no order access in V1 unless explicitly allowed later.
+
+Files Modified
+
+Main files modified:
+
+app/Services/OrderService.php
+app/Forms/StoreOrderRequest.php
+
+Confirmed existing middleware protection:
+
+PATCH /orders/{orderId}/status
+→ owner-only route/middleware protection exists
+
+Related files:
+
+app/Repositories/OrderRepository.php
+app/Core/Auth.php
+app/Controllers/OrderController.php
+routes file
+OrderService Authorization Changes
+Auth Import Added
+
+Added:
+
+use App\Core\Auth;
+
+Purpose:
+
+Use the logged-in session user and role to authorize order actions.
+all()
+
+OrderService::all() was hardened.
+
+Final behavior:
+
+owner → returns all orders
+client → returns only orders where order.client_id = Auth::id()
+supplier/other → throws authorization error
+
+Implementation shape:
+
+public function all(): array
+{
+    $role = Auth::role();
+
+    if ($role === 'owner') {
+        $orders = $this->orders->findAll();
+    } elseif ($role === 'client') {
+        $clientId = Auth::id();
+
+        $orders = array_filter(
+            $this->orders->findAll(),
+            fn ($order) => (int) $order['client_id'] === $clientId
+        );
+
+        $orders = array_values($orders);
+    } else {
+        throw new ValidationException([
+            'auth' => ['You are not allowed to view orders.'],
+        ]);
+    }
+
+    foreach ($orders as &$order) {
+        $order['items'] = $this->orders->findItemsByOrderId($order['id']);
+    }
+
+    unset($order);
+
+    return ApiResponse::success('Orders fetched successfully', $orders);
+}
+
+Note:
+
+This V1 implementation filters after findAll().
+It is acceptable for the school project.
+Later optimization can add OrderRepository::findByClientId(int $clientId).
+find()
+
+OrderService::find() was hardened.
+
+Final behavior:
+
+owner → can view any order
+client → can view only own order
+supplier/other → forbidden
+
+Implementation shape:
+
+public function find(int $orderId): array
+{
+    $order = $this->orders->findById($orderId);
+
+    if (!$order) {
+        throw new ValidationException([
+            'order_id' => ['Order not found.'],
+        ]);
+    }
+
+    $this->authorizeOrderAccess($order);
+
+    $order['items'] = $this->orders->findItemsByOrderId($orderId);
+
+    return ApiResponse::success('Order fetched successfully', $order);
+}
+create()
+
+OrderService::create() was hardened.
+
+Previous risk:
+
+The backend trusted client_id from request body.
+A client could create an order for another client by sending a different client_id.
+
+New behavior:
+
+If logged-in role is client:
+    client_id = Auth::id()
+
+If logged-in role is owner:
+    client_id must be provided in request body
+
+If logged-in role is supplier:
+    forbidden
+
+Implementation shape:
+
+public function create(StoreOrderRequest $request): array
+{
+    $data = $request->data();
+
+    $clientId = $this->resolveClientIdForOrderCreation($data);
+
+    if (!$this->users->findById($clientId)) {
+        throw new ValidationException([
+            'client_id' => ['Client not found.'],
+        ]);
+    }
+
+    $items = $this->prepareItems($data['items']);
+
+    $totalAmount = $this->calculateTotalAmount($items);
+
+    $orderId = $this->orders->createOrder([
+        'client_id' => $clientId,
+        'total_amount' => $totalAmount,
+        'shipping_address' => $data['shipping_address'],
+        'notes' => $data['notes'],
+    ]);
+
+    foreach ($items as $item) {
+        $this->orders->createOrderItem($orderId, $item);
+    }
+
+    $order = $this->orders->findById($orderId);
+    $order['items'] = $this->orders->findItemsByOrderId($orderId);
+
+    $this->notifyOwnerOrderCreated($order);
+
+    return ApiResponse::success('Order created successfully', $order);
+}
+updateStatus()
+
+OrderService::updateStatus() was protected with owner-only authorization.
+
+Final behavior:
+
+Only owner can update order status.
+Client cannot update status.
+Supplier cannot update status.
+
+Implementation shape:
+
+public function updateStatus(int $orderId, UpdateOrderStatusRequest $request): array
+{
+    $this->authorizeOwnerOnly();
+
+    $order = $this->orders->findById($orderId);
+
+    if (!$order) {
+        throw new ValidationException([
+            'order_id' => ['Order not found.'],
+        ]);
+    }
+
+    $newStatus = $request->status();
+
+    if ($newStatus === 'processing') {
+        $this->createSaleStockMovements($orderId);
+    }
+
+    if ($newStatus === 'cancelled') {
+        $this->restoreStockForCancelledOrder($orderId);
+    }
+
+    $this->orders->updateStatus($orderId, $newStatus);
+
+    $updatedOrder = $this->orders->findById($orderId);
+    $updatedOrder['items'] = $this->orders->findItemsByOrderId($orderId);
+
+    $this->notifyClientOrderStatusChanged($updatedOrder, $order['status'], $newStatus);
+
+    return ApiResponse::success('Order status updated successfully', $updatedOrder);
+}
+
+Note:
+
+The route middleware also blocks non-owner users.
+If middleware blocks first, the error may use field role instead of auth.
+That is acceptable.
+Private Helper Methods Added
+resolveClientIdForOrderCreation()
+private function resolveClientIdForOrderCreation(array $data): int
+{
+    $role = Auth::role();
+
+    if ($role === 'client') {
+        return Auth::id();
+    }
+
+    if ($role === 'owner') {
+        if (empty($data['client_id'])) {
+            throw new ValidationException([
+                'client_id' => ['client_id is required when owner creates an order.'],
+            ]);
+        }
+
+        return (int) $data['client_id'];
+    }
+
+    throw new ValidationException([
+        'auth' => ['You are not allowed to create orders.'],
+    ]);
+}
+
+Purpose:
+
+Centralizes the rule for who the order belongs to.
+Prevents clients from impersonating another client by sending another client_id.
+authorizeOrderAccess()
+private function authorizeOrderAccess(array $order): void
+{
+    $role = Auth::role();
+
+    if ($role === 'owner') {
+        return;
+    }
+
+    if ($role === 'client' && (int) $order['client_id'] === Auth::id()) {
+        return;
+    }
+
+    throw new ValidationException([
+        'auth' => ['You are not allowed to access this order.'],
+    ]);
+}
+
+Purpose:
+
+Protects GET /orders/{orderId}.
+authorizeOwnerOnly()
+private function authorizeOwnerOnly(): void
+{
+    if (Auth::role() === 'owner') {
+        return;
+    }
+
+    throw new ValidationException([
+        'auth' => ['Only owner can update order status.'],
+    ]);
+}
+
+Purpose:
+
+Defense-in-depth protection for PATCH /orders/{orderId}/status.
+Even if route middleware is misconfigured, service blocks non-owner users.
+StoreOrderRequest Changes
+Problem
+
+Before hardening, StoreOrderRequest always required:
+
+client_id
+
+This was wrong for client-created orders because:
+
+client identity should come from session, not request body.
+New Validation Behavior
+
+client_id is now optional at request validation level.
+
+Required fields:
+
+items
+shipping_address
+
+Optional field:
+
+client_id
+
+If client_id is provided, it must be an integer.
+
+Final validation shape:
+
+public function validate(): void
+{
+    Validator::make($this->data)
+        ->required('items')
+        ->required('shipping_address')
+        ->validate();
+
+    if (isset($this->data['client_id']) && $this->data['client_id'] !== null && $this->data['client_id'] !== '') {
+        Validator::make($this->data)
+            ->integer('client_id')
+            ->validate();
+    }
+
+    if (!is_array($this->data['items']) || count($this->data['items']) === 0) {
+        throw new ValidationException([
+            'items' => ['Order must contain at least one item.'],
+        ]);
+    }
+
+    foreach ($this->data['items'] as $index => $item) {
+        $this->validateItem($item, $index);
+    }
+}
+clientId()
+
+Changed from returning always int to nullable ?int.
+
+Final shape:
+
+public function clientId(): ?int
+{
+    if (!isset($this->data['client_id']) || $this->data['client_id'] === null || $this->data['client_id'] === '') {
+        return null;
+    }
+
+    return (int) $this->data['client_id'];
+}
+data()
+
+Final shape:
+
+public function data(): array
+{
+    return [
+        'client_id' => $this->clientId(),
+        'shipping_address' => $this->shippingAddress(),
+        'notes' => $this->notes(),
+        'items' => $this->items(),
+    ];
+}
+Correct Client Order Creation Body
+
+A logged-in client can now create an order without sending client_id.
+
+POST /orders
+{
+  "shipping_address": "Test address, Casablanca",
+  "items": [
+    {
+      "component_id": 1,
+      "quantity": 1,
+      "unit_price": 100
+    }
+  ]
+}
+
+Backend uses:
+
+Auth::id()
+
+as the order client_id.
+
+Correct Owner Order Creation Body
+
+An owner can still create an order for a specific client.
+
+POST /orders
+{
+  "client_id": 2,
+  "shipping_address": "Test address, Casablanca",
+  "items": [
+    {
+      "component_id": 1,
+      "quantity": 1,
+      "unit_price": 100
+    }
+  ]
+}
+
+If owner does not send client_id, backend returns:
+
+{
+  "error": "Validation failed",
+  "fields": {
+    "client_id": [
+      "client_id is required when owner creates an order."
+    ]
+  }
+}
+Tests Completed
+Test 1 — Client Creates Order Without client_id
+
+Logged in as client.
+
+Request:
+
+POST /orders
+
+Body:
+
+{
+  "shipping_address": "Test address, Casablanca",
+  "items": [
+    {
+      "component_id": 1,
+      "quantity": 1,
+      "unit_price": 100
+    }
+  ]
+}
+
+Result:
+
+Test passed.
+
+Confirmed:
+
+Client can create an order without sending client_id.
+Backend uses logged-in client session id.
+Test 2 — Client Cannot View Another Client’s Order
+
+Logged in as one client.
+
+Request:
+
+GET /orders/{otherClientOrderId}
+
+Actual response:
+
+{
+  "error": "Validation failed",
+  "fields": {
+    "auth": [
+      "You are not allowed to access this order."
+    ]
+  }
+}
+
+Result:
+
+Test passed.
+Test 3 — Client Order List Only Shows Own Orders
+
+Logged in as:
+
+Ahmed Acheteur
+client_id = 2
+
+Request:
+
+GET /orders
+
+Actual response returned only orders where:
+
+client_id = 2
+client_name = Ahmed Acheteur
+
+Example returned orders:
+
+order_id = 6
+client_id = 2
+
+order_id = 4
+client_id = 2
+
+Result:
+
+Test passed.
+
+Confirmed:
+
+GET /orders for client returns only that client's own orders.
+Test 4 — Client Cannot Update Order Status
+
+Logged in as client.
+
+Request:
+
+PATCH /orders/4/status
+
+Body:
+
+{
+  "status": "completed"
+}
+
+Actual response:
+
+{
+  "error": "Validation failed",
+  "fields": {
+    "role": [
+      "Only owner can perform this action."
+    ]
+  }
+}
+
+Result:
+
+Test passed.
+
+Note:
+
+This error came from route middleware before service authorization.
+This is acceptable because the final rule is enforced:
+client cannot update order status.
+Test 5 — Supplier Cannot Access Orders
+
+Logged in as fournisseur.
+
+Request:
+
+GET /orders
+
+Actual response:
+
+{
+  "error": "Validation failed",
+  "fields": {
+    "auth": [
+      "You are not allowed to view orders."
+    ]
+  }
+}
+
+Result:
+
+Test passed.
+Final Confirmed Order Authorization Matrix
+✅ Client creates order for themselves without sending client_id.
+✅ Backend ignores client_id from request body for client-created orders.
+✅ Owner can still create order for a chosen client.
+✅ Client can view only their own orders.
+✅ Client cannot view another client’s order.
+✅ Client cannot update order status.
+✅ Supplier cannot access orders.
+✅ Owner-only status update is protected by middleware/service.
+Interaction With Order Notifications
+
+Order notifications still work after authorization hardening.
+
+Confirmed behavior remains:
+
+ORDER_CREATED
+→ owner receives notification when order is created
+
+ORDER_STATUS_CHANGED
+→ order client receives notification when owner changes order status
+
+Important:
+
+Because client_id now comes from Auth::id() for client-created orders, ORDER_STATUS_CHANGED notifications are safer.
+They target the real logged-in client who owns the order.
+Current Backend Status Update
+
+Recently completed:
+
+RFQ notification group
+purchase lot notification triggers
+stock alert notifications
+order notifications
+order/client authorization hardening
+
+Current notification set completed:
+
+RFQ_ASSIGNED
+RFQ_QUOTED
+RFQ_ACCEPTED_BY_OWNER
+RFQ_REJECTED_BY_OWNER
+PURCHASE_LOT_NEEDS_FINALIZATION
+PURCHASE_LOT_FINALIZED
+LOW_STOCK_ALERT
+OUT_OF_STOCK_ALERT
+ORDER_CREATED
+ORDER_STATUS_CHANGED
+
+Order module V1 authorization is complete.
