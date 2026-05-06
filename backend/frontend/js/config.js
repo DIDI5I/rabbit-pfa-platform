@@ -1,0 +1,1 @@
+const API_BASE = '/rabbit-pfa-platform/backend/api';
