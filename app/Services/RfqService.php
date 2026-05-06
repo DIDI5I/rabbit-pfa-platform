@@ -29,6 +29,15 @@ class RfqService
     
     public function accept(AcceptRfqRequest $request): array
     {
+        return $this->acceptByData(
+            $request->rfqId(),
+            $request->decisionNote(),
+            $request->userId()
+        );
+    }
+
+    public function acceptByData(int $rfqId, ?string $decisionNote, int $userId): array
+    {
         $database = App::resolve(Database::class);
         $pdo = $database->connection();
 
@@ -36,18 +45,18 @@ class RfqService
             $pdo->beginTransaction();
 
             $result = $this->repository->accept(
-                $request->rfqId(),
-                $request->userId(),
-                $request->decisionNote()
+                $rfqId,
+                $userId,
+                $decisionNote
             );
 
-            $rfq = $this->repository->findById($request->rfqId());
+            $rfq = $this->repository->findById($rfqId);
 
-            $this->createPurchaseLotAfterRfqAccepted($rfq, $request->userId());
+            $this->createPurchaseLotAfterRfqAccepted($rfq, $userId);
 
             $pdo->commit();
 
-            $rfq = $this->repository->findById($request->rfqId());
+            $rfq = $this->repository->findById($rfqId);
 
             if ($rfq && !empty($rfq['supplier_id'])) {
                 $this->notifySupplierCompany(
@@ -56,7 +65,7 @@ class RfqService
                     'Devis accepté',
                     'Votre devis a été accepté par le propriétaire.',
                     'rfq',
-                    $request->rfqId()
+                    $rfqId
                 );
             }
 
@@ -65,12 +74,12 @@ class RfqService
                 'Lot d’achat à finaliser',
                 'Une RFQ acceptée a généré un lot d’achat à finaliser.',
                 'rfq',
-                $request->rfqId()
+                $rfqId
             );
 
             return ApiResponse::success('RFQ accepted successfully', $result);
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
@@ -81,6 +90,15 @@ class RfqService
 
     public function reject(AcceptRfqRequest $request): array
     {
+        return $this->rejectByData(
+            $request->rfqId(),
+            $request->decisionNote(),
+            $request->userId()
+        );
+    }
+
+    public function rejectByData(int $rfqId, ?string $decisionNote, int $userId): array
+    {
         $database = App::resolve(Database::class);
         $pdo = $database->connection();
 
@@ -88,14 +106,14 @@ class RfqService
             $pdo->beginTransaction();
 
             $result = $this->repository->reject(
-                $request->rfqId(),
-                $request->userId(),
-                $request->decisionNote()
+                $rfqId,
+                $userId,
+                $decisionNote
             );
 
             $pdo->commit();
 
-            $rfq = $this->repository->findById($request->rfqId());
+            $rfq = $this->repository->findById($rfqId);
 
             if ($rfq && !empty($rfq['supplier_id'])) {
                 $this->notifySupplierCompany(
@@ -104,10 +122,11 @@ class RfqService
                     'Devis rejeté',
                     'Votre devis n’a pas été retenu.',
                     'rfq',
-                    $request->rfqId()
+                    $rfqId
                 );
             }
-            return ApiResponse::success('RFQ rejected successfully',$result);
+
+            return ApiResponse::success('RFQ rejected successfully', $result);
 
         } catch (\Exception $e) {
             if ($pdo->inTransaction()) {
@@ -117,7 +136,17 @@ class RfqService
             throw $e;
         }
     }
+
     public function expire(AcceptRfqRequest $request): array
+    {
+        return $this->expireByData(
+            $request->rfqId(),
+            $request->decisionNote(),
+            $request->userId()
+        );
+    }
+
+    public function expireByData(int $rfqId, ?string $decisionNote, int $userId): array
     {
         $database = App::resolve(Database::class);
         $pdo = $database->connection();
@@ -126,13 +155,15 @@ class RfqService
             $pdo->beginTransaction();
 
             $result = $this->repository->expire(
-                $request->rfqId(),
-                $request->userId(),
-                $request->decisionNote()
+                $rfqId,
+                $userId,
+                $decisionNote
             );
 
             $pdo->commit();
-            return ApiResponse::success('RFQ expired successfully',$result);
+
+            return ApiResponse::success('RFQ expired successfully', $result);
+
         } catch (\Exception $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
@@ -141,8 +172,16 @@ class RfqService
             throw $e;
         }
     }
-
     public function open(AcceptRfqRequest $request): array
+    {
+        return $this->openByData(
+            $request->rfqId(),
+            $request->decisionNote(),
+            $request->userId()
+        );
+    }
+
+    public function openByData(int $rfqId, ?string $decisionNote, int $userId): array
     {
         $database = App::resolve(Database::class);
         $pdo = $database->connection();
@@ -150,11 +189,11 @@ class RfqService
         try {
             $pdo->beginTransaction();
 
-            $result = $this->repository->open($request->rfqId());
+            $result = $this->repository->open($rfqId);
 
             $pdo->commit();
 
-            $rfq = $this->repository->findById($request->rfqId());
+            $rfq = $this->repository->findById($rfqId);
 
             if ($rfq && !empty($rfq['supplier_id'])) {
                 $this->notifySupplierCompany(
@@ -163,11 +202,12 @@ class RfqService
                     'Nouvelle RFQ assignée',
                     'Une nouvelle demande de devis vous a été envoyée.',
                     'rfq',
-                    $request->rfqId()
+                    $rfqId
                 );
             }
 
-            return ApiResponse::success('RFQ opened successfully',$result);
+            return ApiResponse::success('RFQ opened successfully', $result);
+
         } catch (\Exception $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
@@ -176,7 +216,6 @@ class RfqService
             throw $e;
         }
     }
-
     public function allowedActions(string $status): array
     {
         return match ($status) {
