@@ -50,6 +50,10 @@ class ChatbotService
             );
         }
 
+        if (in_array($intent, ['confirm_write_action', 'cancel_write_action'], true)) {
+            return $this->handlePendingWriteActionIntent($intent, $identity);
+        }
+
         if ($operationType === 'write_action') {
             $logger->log([
                 'user_id' => $identity['user_id'] ?? null,
@@ -246,5 +250,70 @@ class ChatbotService
         }
 
         return $response;
+        }
+
+        private function handlePendingWriteActionIntent(string $intent, array $identity): array
+    {
+        $store = new \App\Services\Chatbot\WriteActions\PendingActionStore();
+        $builder = new \App\Services\Chatbot\WriteActions\WriteActionResponseBuilder();
+
+        $action = $store->get($identity);
+
+        if (!$action) {
+            return $this->finalizeResponse(
+                $builder->noPendingAction($identity, $intent),
+                $identity
+            );
+        }
+
+        if ($intent === 'cancel_write_action') {
+            $store->clear();
+
+            return $this->finalizeResponse(
+                $builder->cancelled($identity, $action),
+                $identity
+            );
+        }
+
+        /*
+        * Stage 11A.1 does not execute actions yet.
+        * Real execution comes in 11A.3+.
+        */
+        return $this->finalizeResponse(
+            [
+                'message' => 'Chatbot action confirmation received.',
+                'data' => [
+                    'answer' => 'Confirmation received, but this action executor is not implemented yet. No changes were made.',
+                    'ai_refined' => false,
+                    'intent' => $action['intent'] ?? 'confirm_write_action',
+                    'confidence' => 'high',
+                    'role' => $identity['role'] ?? 'guest',
+                    'operation_type' => 'write_action',
+                    'summary' => [
+                        'confirmed' => true,
+                        'executed' => false,
+                    ],
+                    'items_preview' => [],
+                    'result_meta' => [
+                        'pending_action' => true,
+                        'action_id' => $action['action_id'] ?? null,
+                        'executor_implemented' => false,
+                    ],
+                    'sources' => [
+                        [
+                            'tool' => $action['tool'] ?? 'write_action',
+                            'status' => 'confirmation_received',
+                        ],
+                    ],
+                    'limitations' => [
+                        'The confirmation pipeline exists, but this executor is not implemented yet.',
+                    ],
+                    'suggested_actions' => [
+                        'Cancel',
+                    ],
+                ],
+            ],
+            $identity
+        );
     }
 }

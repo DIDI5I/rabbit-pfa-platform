@@ -13,6 +13,7 @@ use App\Services\Chatbot\Registry\ProductIntelligenceToolRegistry;
 use App\Services\Chatbot\Registry\StockIntelligenceExplanationToolRegistry;
 use App\Services\Chatbot\Registry\OrderToolRegistry;
 use App\Services\Chatbot\Registry\StockIntelligenceDashboardToolRegistry;
+use App\Services\Chatbot\Registry\WriteActionToolRegistry;
 
 class ToolRegistry
 {
@@ -26,6 +27,7 @@ class ToolRegistry
     public function __construct()
     {
         $this->groups = [
+            new WriteActionToolRegistry(),
             new PublicToolRegistry(),
             new OwnerInventoryToolRegistry(),
             new OwnerProductToolRegistry(),

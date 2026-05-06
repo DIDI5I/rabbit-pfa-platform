@@ -23,7 +23,8 @@ use App\Services\Chatbot\Intent\ProductIntelligenceIntentDetector;
 use App\Services\Chatbot\Intent\StockIntelligenceExplanationIntentDetector;
 use App\Services\Chatbot\Intent\OrderIntentDetector;
 use App\Services\Chatbot\Intent\StockIntelligenceDashboardIntentDetector;
-
+use App\Services\Chatbot\Intent\ConfirmActionIntentDetector;
+use App\Services\Chatbot\Intent\CancelActionIntentDetector;
 class IntentClassifier
 {
     /**
@@ -34,6 +35,9 @@ class IntentClassifier
     public function __construct()
     {
         $this->detectors = [
+            new ConfirmActionIntentDetector(),
+            new CancelActionIntentDetector(),
+
             new HelpIntentDetector(),
             new ClarificationIntentDetector(),
             new NotificationIntentDetector(),
