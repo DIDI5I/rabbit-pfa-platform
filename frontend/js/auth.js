@@ -1,59 +1,113 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('login-form');
-  if (!form) return;
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
+/* ============================================================
+   auth.js — Rabbit B2B MRO Platform
+   Gestion de session. Le backend utilise les cookies PHP.
+   Tout doit passer par credentials: "include".
+   ============================================================ */
 
-  const emailInput = document.getElementById('email');
-  const passwordInput = document.getElementById('password');
-  const errorEl = document.getElementById('login-error');
+let _currentUser = null;
 
-  console.log('emailInput:', emailInput);
-  console.log('passwordInput:', passwordInput);
+// ── Récupère l'utilisateur courant ─────────────────────────────
+async function getCurrentUser() {
+  if (_currentUser) return _currentUser;
 
-  const email = emailInput ? emailInput.value.trim() : '';
-  const password = passwordInput ? passwordInput.value : '';
+  const stored = localStorage.getItem("rabbit_user");
 
-  console.log('Email value:', email);
-  console.log('Password value:', password);
-
-  if (errorEl) errorEl.textContent = '';
+  if (stored) {
+    try {
+      _currentUser = JSON.parse(stored);
+      return _currentUser;
+    } catch {
+      localStorage.removeItem("rabbit_user");
+    }
+  }
 
   try {
-    const response = await fetch(`${API_BASE}/auth/login.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',
-      body: JSON.stringify({ email, password })
-    });
+    const data = await apiFetchJson("/user");
+    _currentUser = unwrap(data);
 
-    const data = await response.json();
-
-    console.log('Response status:', response.status);
-    console.log('Response data:', data);
-
-    if (!response.ok) {
-      if (errorEl) errorEl.textContent = data.error || 'Login failed';
-      return;
+    if (_currentUser) {
+      localStorage.setItem("rabbit_user", JSON.stringify(_currentUser));
     }
 
-    const role = (data.user?.role || '').trim().toLowerCase();
-
-    if (role === 'owner') {
-      window.location.href = 'owner.html';
-    } else if (role === 'fournisseur') {
-      window.location.href = 'supplier.html';
-    } else if (role === 'client') {
-      window.location.href = 'client.html';
-    } else {
-      if (errorEl) errorEl.textContent = `Unknown user role: ${role}`;
-    }
-
-  } catch (error) {
-    console.error(error);
-    if (errorEl) errorEl.textContent = 'Network or server error';
+    return _currentUser;
+  } catch {
+    return null;
   }
-});
-});
+}
+
+// ── Vérifie l'auth et redirige si nécessaire ──────────────────
+// allowedRoles: string | string[] | null (null = tout rôle authentifié)
+async function checkAuth(allowedRoles = null) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    window.location.href = "../login.html";
+    return null;
+  }
+
+  if (allowedRoles) {
+    const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+    const userRole = user.role === "fournisseur" ? "supplier" : user.role;
+    const normalised = roles.map(r => r === "fournisseur" ? "supplier" : r);
+
+    if (!normalised.includes(userRole)) {
+      window.location.href = roleRedirectUrl(userRole);
+      return null;
+    }
+  }
+
+  return user;
+}
+
+// ── Redirige selon le rôle ─────────────────────────────────────
+  function roleRedirectUrl(role) {
+  const map = {
+    owner: "pages/owner.html",
+    client: "pages/client.html",
+    supplier: "pages/supplier.html",
+    fournisseur: "pages/supplier.html",
+  };
+
+  return map[role] || "../login.html";
+}
+
+// ── Login ──────────────────────────────────────────────────────
+async function login(email, password) {
+  const data = await apiFetchJson("/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+
+  const user = unwrap(data)?.user || unwrap(data);
+
+  if (user) {
+    _currentUser = user;
+    localStorage.setItem("rabbit_user", JSON.stringify(user));
+    return user;
+  }
+
+  throw new Error(L.login.error);
+}
+// ── Logout ─────────────────────────────────────────────────────
+async function logout() {
+  _currentUser = null;
+  localStorage.removeItem("rabbit_user");
+
+  try {
+    await apiFetchJson("/logout", { method: "POST" });
+  } catch {}
+
+  window.location.href = "../login.html";
+}
+
+// ── Seed user display ──────────────────────────────────────────
+function seedUserDisplay(user) {
+  if (!user) return;
+  const initials = (user.name || "RB").slice(0, 2).toUpperCase();
+  const roleLabel = L.roles[user.role] || user.role;
+
+  document.querySelectorAll("[data-user-initials]").forEach(el => el.textContent = initials);
+  document.querySelectorAll("[data-user-name]").forEach(el => el.textContent = user.name || "");
+  document.querySelectorAll("[data-user-role]").forEach(el => el.textContent = roleLabel);
+  document.querySelectorAll("[data-user-company]").forEach(el => el.textContent = user.company_name || "");
+}

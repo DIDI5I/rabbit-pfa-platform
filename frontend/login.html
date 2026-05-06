@@ -1,22 +1,511 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rabbit — Connexion</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+
+  <style>
+    .login-page {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(79,70,229,.16), transparent 28%),
+        radial-gradient(circle at 85% 10%, rgba(37,99,235,.12), transparent 26%),
+        var(--bg);
+    }
+
+    .login-hero {
+      padding: 64px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: var(--sidebar-bg);
+      color: #E2E8F0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-hero::after {
+      content: "";
+      position: absolute;
+      width: 360px;
+      height: 360px;
+      border-radius: 50%;
+      background: rgba(79,70,229,.25);
+      right: -120px;
+      bottom: -120px;
+      filter: blur(2px);
+    }
+
+    .login-brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      position: relative;
+      z-index: 1;
+    }
+
+    .login-brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: var(--r-md);
+      background: var(--brand);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      box-shadow: var(--shadow-md);
+    }
+
+    .login-brand-name {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -.03em;
+    }
+
+    .login-brand-tag {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #94A3B8;
+      letter-spacing: .08em;
+      font-weight: 700;
+    }
+
+    .login-hero-content {
+      max-width: 560px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .login-hero-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: 6px 10px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: var(--r-pill);
+      color: #C7D2FE;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: var(--space-5);
+      background: rgba(255,255,255,.04);
+    }
+
+    .login-hero h1 {
+      font-size: 42px;
+      line-height: 1.08;
+      letter-spacing: -.05em;
+      margin-bottom: var(--space-5);
+      color: #F8FAFC;
+    }
+
+    .login-hero p {
+      font-size: 15px;
+      color: #94A3B8;
+      max-width: 520px;
+    }
+
+    .login-hero-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-3);
+      margin-top: var(--space-8);
+    }
+
+    .login-feature {
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      border-radius: var(--r-lg);
+      padding: var(--space-4);
+    }
+
+    .login-feature i {
+      color: #818CF8;
+      margin-bottom: var(--space-2);
+    }
+
+    .login-feature strong {
+      display: block;
+      font-size: 13px;
+      color: #E2E8F0;
+      margin-bottom: 3px;
+    }
+
+    .login-feature span {
+      display: block;
+      font-size: 11px;
+      color: #94A3B8;
+      line-height: 1.5;
+    }
+
+    .login-copy {
+      position: relative;
+      z-index: 1;
+      font-size: 11px;
+      color: #64748B;
+    }
+
+    .login-panel-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-8);
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: var(--shadow-xl);
+      padding: 34px;
+    }
+
+    .login-card-header {
+      margin-bottom: var(--space-6);
+    }
+
+    .login-card-title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -.03em;
+      color: var(--text);
+    }
+
+    .login-card-sub {
+      color: var(--text-3);
+      font-size: 13px;
+      margin-top: 5px;
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
+
+    .login-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      border-radius: var(--r-md);
+      padding: 0 var(--space-3);
+      height: 44px;
+      transition: border-color .15s, background .15s;
+    }
+
+    .login-input-wrap:focus-within {
+      border-color: var(--brand);
+      background: var(--surface);
+    }
+
+    .login-input-wrap i {
+      color: var(--text-3);
+      width: 16px;
+      text-align: center;
+    }
+
+    .login-input-wrap input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      outline: none;
+      font-family: Manrope, sans-serif;
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .login-help-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-3);
+    }
+
+    .login-error {
+      display: none;
+      padding: 10px 12px;
+      border-radius: var(--r-md);
+      background: var(--red-light);
+      color: #7F1D1D;
+      border: 1px solid #FECACA;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .login-error.show {
+      display: block;
+    }
+
+    .login-submit {
+      height: 44px;
+      justify-content: center;
+      margin-top: var(--space-1);
+    }
+
+    .login-demo {
+      margin-top: var(--space-5);
+      padding-top: var(--space-5);
+      border-top: 1px solid var(--border);
+    }
+
+    .login-demo-title {
+      font-size: 11px;
+      color: var(--text-3);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: var(--space-2);
+    }
+
+    .login-demo-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+
+    .login-demo-btn {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: var(--r-pill);
+      padding: 6px 10px;
+      font-size: 12px;
+      font-family: Manrope, sans-serif;
+      font-weight: 700;
+      color: var(--text-2);
+      cursor: pointer;
+    }
+
+    .login-demo-btn:hover {
+      background: var(--brand-light);
+      border-color: var(--brand-mid);
+      color: var(--brand);
+    }
+
+    @media (max-width: 900px) {
+      .login-page {
+        grid-template-columns: 1fr;
+      }
+
+      .login-hero {
+        display: none;
+      }
+
+      .login-panel-wrap {
+        padding: var(--space-5);
+      }
+    }
+  </style>
 </head>
+
 <body>
-    <h1>Login</h1>
+  <main class="login-page">
+    <section class="login-hero">
+      <div class="login-brand">
+        <div class="login-brand-mark">
+          <i class="fas fa-cube"></i>
+        </div>
+        <div>
+          <div class="login-brand-name">Rabbit</div>
+          <div class="login-brand-tag">B2B MRO Platform</div>
+        </div>
+      </div>
 
-    <form id="login-form">
-        <input type="email" id="email" placeholder="Email" required />
-        <input type="password" id="password" placeholder="Password" required autocomplete="current-password" />
-        <button type="submit">Login</button>
-    </form>
+      <div class="login-hero-content">
+        <div class="login-hero-kicker">
+          <i class="fas fa-shield-halved"></i>
+          Plateforme d'inventaire intelligente
+        </div>
 
-    <p id="login-error"></p>
+        <h1>Stock, achats et intelligence opérationnelle.</h1>
 
-    <script src="js/config.js"></script>
-    <script src="js/auth.js"></script>
+        <p>
+          Rabbit centralise le catalogue, l'inventaire, les demandes de devis,
+          les lots d'achat, les alertes stock et l'assistant backend.
+        </p>
+
+        <div class="login-hero-grid">
+          <div class="login-feature">
+            <i class="fas fa-warehouse"></i>
+            <strong>Inventaire</strong>
+            <span>Suivi des niveaux de stock, seuils et mouvements.</span>
+          </div>
+
+          <div class="login-feature">
+            <i class="fas fa-brain"></i>
+            <strong>Intelligence stock</strong>
+            <span>Priorités, recommandations et signaux de réapprovisionnement.</span>
+          </div>
+
+          <div class="login-feature">
+            <i class="fas fa-file-invoice"></i>
+            <strong>RFQ</strong>
+            <span>Demandes de devis et suivi fournisseur.</span>
+          </div>
+
+          <div class="login-feature">
+            <i class="fas fa-robot"></i>
+            <strong>Assistant Rabbit</strong>
+            <span>Chatbot connecté aux outils backend autorisés.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="login-copy">
+        Rabbit PFA · HTML/CSS/JavaScript · PHP/SQL Backend
+      </div>
+    </section>
+
+    <section class="login-panel-wrap">
+      <div class="login-card">
+        <div class="login-card-header">
+          <div class="login-card-title">Connexion</div>
+          <div class="login-card-sub">Accédez à votre espace Rabbit.</div>
+        </div>
+
+        <div id="login-error" class="login-error"></div>
+
+        <form id="login-form" class="login-form">
+          <div class="form-group">
+            <label class="form-label" for="email">Adresse e-mail</label>
+            <div class="login-input-wrap">
+              <i class="fas fa-envelope"></i>
+              <input id="email" type="email" autocomplete="email" placeholder="owner@rabbit.ma" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="password">Mot de passe</label>
+            <div class="login-input-wrap">
+              <i class="fas fa-lock"></i>
+              <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
+            </div>
+          </div>
+
+          <div class="login-help-row">
+            <span>Session sécurisée par cookie PHP</span>
+            <span>Local</span>
+          </div>
+
+          <button id="login-submit" class="btn-primary login-submit" type="submit">
+            <i class="fas fa-right-to-bracket"></i>
+            Se connecter
+          </button>
+        </form>
+
+        <div class="login-demo">
+          <div class="login-demo-title">Accès de test</div>
+          <div class="login-demo-buttons">
+            <button class="login-demo-btn" type="button" data-demo-email="owner@rabbit.ma" data-demo-password="test1234">
+              Administrateur
+            </button>
+            <button class="login-demo-btn" type="button" data-demo-email="client@rabbit.ma" data-demo-password="test1234">
+              Client
+            </button>
+            <button class="login-demo-btn" type="button" data-demo-email="supplier@rabbit.ma" data-demo-password="test1234">
+              Fournisseur
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/labels.js"></script>
+  <script src="js/formatters.js"></script>
+  <script src="js/services.js"></script>
+  <script src="js/auth.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.getElementById("login-form");
+      const email = document.getElementById("email");
+      const password = document.getElementById("password");
+      const submit = document.getElementById("login-submit");
+      const errorBox = document.getElementById("login-error");
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        await doLogin(email.value.trim(), password.value);
+      });
+
+      document.querySelectorAll("[data-demo-email]").forEach((button) => {
+        button.addEventListener("click", () => {
+          email.value = button.dataset.demoEmail;
+          password.value = button.dataset.demoPassword;
+        });
+      });
+
+      async function doLogin(emailValue, passwordValue) {
+        hideError();
+
+        if (!emailValue || !passwordValue) {
+          showError("Veuillez saisir votre e-mail et votre mot de passe.");
+          return;
+        }
+
+        submit.disabled = true;
+        submit.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Connexion...`;
+
+        try {
+        const user = await login(emailValue, passwordValue);
+
+        console.log("LOGIN USER:", user);
+
+        if (!user || !user.role) {
+            throw new Error("Connexion réussie, mais aucun utilisateur valide n'a été retourné.");
+        }
+
+        localStorage.setItem("rabbit_user", JSON.stringify(user));
+
+        window.location.href = getRedirectForRole(user.role);
+        } catch (error) {
+        showError(formatApiError(error) || error.message || "Connexion échouée.");
+        } finally {
+          submit.disabled = false;
+          submit.innerHTML = `<i class="fas fa-right-to-bracket"></i> Se connecter`;
+        }
+      }
+
+      function getRedirectForRole(role) {
+        const normalizedRole = role === "fournisseur" ? "supplier" : role;
+
+        const routes = {
+          owner: "pages/owner.html",
+          client: "pages/client.html",
+          supplier: "pages/supplier.html",
+        };
+
+        return routes[normalizedRole] || "login.html";
+      }
+
+      function showError(message) {
+        errorBox.textContent = message;
+        errorBox.classList.add("show");
+      }
+
+      function hideError() {
+        errorBox.textContent = "";
+        errorBox.classList.remove("show");
+      }
+    });
+  </script>
 </body>
 </html>

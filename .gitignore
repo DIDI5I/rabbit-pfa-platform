@@ -1,29 +1,30 @@
-<<<<<<< HEAD
-backend/config.php
-node_modules/
-.env
-.vs/
-.DS_Store
-=======
 # Local configuration / secrets
 config.php
 
 # Environment files
 .env
 .env.*
+frontend/.env
+frontend/.env.*
 
 # Logs
 *.log
 logs/
 storage/logs/
+storage/logs/*.log
 
 # Dependencies
 /vendor/
 /node_modules/
+backend/vendor/
+frontend/node_modules/
+
+# Local cookies / backups
+cookies.txt
+backend_backup_before_restructure/
 
 # OS / editor
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
->>>>>>> 41a4d69 (Ignore local config and add config example)
