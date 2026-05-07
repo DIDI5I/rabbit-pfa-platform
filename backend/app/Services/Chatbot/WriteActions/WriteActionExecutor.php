@@ -10,6 +10,9 @@ use App\Services\Chatbot\WriteActions\Rfq\AcceptRfqExecutor;
 use App\Services\Chatbot\WriteActions\Rfq\ExpireRfqExecutor;
 use App\Services\Chatbot\WriteActions\Rfq\OpenRfqExecutor;
 use App\Services\Chatbot\WriteActions\Order\UpdateOrderStatusExecutor;
+use App\Services\Chatbot\WriteActions\Stock\StockMovementExecutor;
+use App\Services\Chatbot\WriteActions\Stock\SetStockLevelExecutor;
+use App\Services\Chatbot\WriteActions\PurchaseLot\FinalizePurchaseLotExecutor;
 
 class WriteActionExecutor
 {
@@ -26,6 +29,9 @@ class WriteActionExecutor
             new ExpireRfqExecutor(),
             new OpenRfqExecutor(),
             new UpdateOrderStatusExecutor(),
+            new StockMovementExecutor(),
+            new SetStockLevelExecutor(),
+            new FinalizePurchaseLotExecutor(),
         ];
     }
 

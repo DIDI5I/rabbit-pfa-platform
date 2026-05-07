@@ -5,6 +5,9 @@ namespace App\Services\Chatbot\Registry;
 use App\Services\Chatbot\WriteActions\Notification\NotificationWriteToolRegistry;
 use App\Services\Chatbot\WriteActions\Rfq\RfqWriteToolRegistry;
 use App\Services\Chatbot\WriteActions\Order\OrderWriteToolRegistry;
+use App\Services\Chatbot\WriteActions\Stock\StockWriteToolRegistry;
+use App\Services\Chatbot\WriteActions\PurchaseLot\PurchaseLotWriteToolRegistry;
+
 class WriteActionToolRegistry
 {
     public function tools(): array
@@ -29,7 +32,9 @@ class WriteActionToolRegistry
         ],
         (new \App\Services\Chatbot\WriteActions\Notification\NotificationWriteToolRegistry())->tools(),
         (new RfqWriteToolRegistry())->tools(),
-        (new OrderWriteToolRegistry())->tools()
+        (new OrderWriteToolRegistry())->tools(),
+        (new StockWriteToolRegistry())->tools(),
+        (new PurchaseLotWriteToolRegistry())->tools()
     );
     }
 }

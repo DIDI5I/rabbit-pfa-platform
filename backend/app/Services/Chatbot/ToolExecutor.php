@@ -45,6 +45,10 @@ use App\Services\Chatbot\WriteActions\Rfq\AcceptRfqPreviewTool;
 use App\Services\Chatbot\WriteActions\Rfq\ExpireRfqPreviewTool;
 use App\Services\Chatbot\WriteActions\Rfq\OpenRfqPreviewTool;
 use App\Services\Chatbot\WriteActions\Order\UpdateOrderStatusPreviewTool;
+use App\Services\Chatbot\WriteActions\Stock\StockMovementPreviewTool;
+use App\Services\Chatbot\WriteActions\Stock\SetStockLevelPreviewTool;
+use App\Services\Chatbot\WriteActions\PurchaseLot\FinalizePurchaseLotPreviewTool;
+use App\Services\Chatbot\WriteActions\PurchaseLot\UpdatePendingPurchaseLotCostsTool;
 use Throwable;
 
 
@@ -63,6 +67,12 @@ class ToolExecutor
             new NavigationTool(),
             new ShowMoreTool(),
 
+            new StockMovementPreviewTool(),
+            new SetStockLevelPreviewTool(),
+
+            new UpdatePendingPurchaseLotCostsTool(),
+            new FinalizePurchaseLotPreviewTool(),
+
             new OpenRfqPreviewTool(),
             new ExpireRfqPreviewTool(),
             new RejectRfqPreviewTool(),
@@ -74,7 +84,7 @@ class ToolExecutor
             new RfqAllowedActionsTool(),
 
             new UpdateOrderStatusPreviewTool(),
-            
+
             new MarkAllNotificationsReadPreviewTool(),
             new MarkNotificationReadPreviewTool(),
 

@@ -120,6 +120,10 @@ class ChatbotService
                 'expire_rfq',
                 'open_rfq',
                 'update_order_status',
+                'record_stock_movement',
+                'set_stock_level',
+                'finalize_purchase_lot',
+                'update_pending_purchase_lot_costs',
             ], true)) {
             
             $toolResult = (new ToolExecutor())->execute($intent, $params, $identity, $context);

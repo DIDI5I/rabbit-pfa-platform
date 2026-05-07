@@ -164,4 +164,29 @@ class StockService
 
         return 'OK';
     }
+
+    public function recordMovementByData(
+        int $componentId,
+        string $type,
+        float $quantity,
+        string $reason = 'MANUAL_ADJUSTMENT',
+        ?string $referenceType = null,
+        ?int $referenceId = null,
+        ?string $notes = null,
+        ?int $createdBy = null
+    ): array {
+        $request = new StoreStockMovementRequest([
+            'component_id' => $componentId,
+            'type' => $type,
+            'quantity' => $quantity,
+            'reason' => $reason,
+            'reference_type' => $referenceType,
+            'reference_id' => $referenceId,
+            'notes' => $notes,
+        ]);
+
+        $request->validate();
+
+        return $this->recordMovement($request, $createdBy);
+    }
 }
