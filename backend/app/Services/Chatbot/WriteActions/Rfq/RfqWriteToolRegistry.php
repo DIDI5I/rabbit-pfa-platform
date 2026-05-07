@@ -14,6 +14,14 @@ class RfqWriteToolRegistry
                 'sensitive' => true,
                 'required_params' => ['rfq_id'],
             ],
+
+            'accept_rfq' => [
+                'roles' => ['owner'],
+                'tool' => 'accept_rfq',
+                'operation_type' => 'write_action',
+                'sensitive' => true,
+                'required_params' => ['rfq_id'],
+            ],
         ];
     }
 }

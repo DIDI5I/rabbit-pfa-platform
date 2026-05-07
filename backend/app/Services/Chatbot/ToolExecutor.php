@@ -41,6 +41,7 @@ use App\Services\Chatbot\Tools\StockIntelligenceDashboard\StockIntelligenceDashb
 use App\Services\Chatbot\WriteActions\Notification\MarkAllNotificationsReadPreviewTool;
 use App\Services\Chatbot\WriteActions\Notification\MarkNotificationReadPreviewTool;
 use App\Services\Chatbot\WriteActions\Rfq\RejectRfqPreviewTool;
+use App\Services\Chatbot\WriteActions\Rfq\AcceptRfqPreviewTool;
 use Throwable;
 
 class ToolExecutor
@@ -59,7 +60,8 @@ class ToolExecutor
             new ShowMoreTool(),
 
             new RejectRfqPreviewTool(),
-
+            new AcceptRfqPreviewTool(),
+            
             new RfqSummaryTool(),
             new RfqDetailsTool(),
             new RfqsByStatusTool(),

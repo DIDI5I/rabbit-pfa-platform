@@ -12,7 +12,15 @@ class RfqWriteIntentDetector implements IntentDetectorInterface
         $normalized = $this->normalize($text);
 
         $rfqId = $this->extractRfqId($normalized);
-
+        if ($rfqId !== null && $this->wantsAccept($normalized)) {
+            return TextIntentUtils::result(
+                'accept_rfq',
+                [
+                    'rfq_id' => $rfqId,
+                ],
+                'high'
+            );
+        }
         if ($rfqId !== null && $this->wantsReject($normalized)) {
             return TextIntentUtils::result(
                 'reject_rfq',
@@ -58,5 +66,18 @@ class RfqWriteIntentDetector implements IntentDetectorInterface
         $text = preg_replace('/\s+/', ' ', $text);
 
         return trim($text);
+    }
+
+    private function wantsAccept(string $text): bool
+    {
+        return str_contains($text, 'accept rfq')
+            || str_contains($text, 'approve rfq')
+            || str_contains($text, 'validate rfq')
+            || str_contains($text, 'accept request for quote')
+            || str_contains($text, 'accepter rfq')
+            || str_contains($text, 'valider rfq')
+            || str_contains($text, 'approuver rfq')
+            || str_contains($text, 'accepter demande de devis')
+            || str_contains($text, 'valider demande de devis');
     }
 }

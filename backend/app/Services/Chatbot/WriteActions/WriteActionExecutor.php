@@ -6,6 +6,8 @@ use App\Services\Chatbot\WriteActions\Contracts\PendingActionExecutorInterface;
 use App\Services\Chatbot\WriteActions\Notification\MarkAllNotificationsReadExecutor;
 use App\Services\Chatbot\WriteActions\Notification\MarkNotificationReadExecutor;
 use App\Services\Chatbot\WriteActions\Rfq\RejectRfqExecutor;
+use App\Services\Chatbot\WriteActions\Rfq\AcceptRfqExecutor;
+
 class WriteActionExecutor
 {
     /** @var PendingActionExecutorInterface[] */
@@ -17,6 +19,7 @@ class WriteActionExecutor
             new MarkAllNotificationsReadExecutor(),
             new MarkNotificationReadExecutor(),
             new RejectRfqExecutor(),
+            new AcceptRfqExecutor(),
         ];
     }
 
