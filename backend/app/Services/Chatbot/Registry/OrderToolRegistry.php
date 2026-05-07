@@ -38,6 +38,7 @@ class OrderToolRegistry
                 'sensitive' => true,
                 'required_params' => ['order_id'],
             ],
+
         ];
     }
 }

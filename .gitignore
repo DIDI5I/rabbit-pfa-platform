@@ -28,3 +28,9 @@ backend_backup_before_restructure/
 Thumbs.db
 .vscode/
 .idea/
+
+node_modules/
+dist/
+.DS_Store
+*.log
+.vite/

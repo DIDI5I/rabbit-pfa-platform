@@ -38,6 +38,7 @@ use App\Services\Chatbot\Presenters\Order\OrdersByStatusPresenter;
 use App\Services\Chatbot\Presenters\Order\OrderDetailsPresenter;
 use App\Services\Chatbot\Presenters\StockIntelligenceDashboard\StockIntelligenceSummaryPresenter;
 use App\Services\Chatbot\Presenters\StockIntelligenceDashboard\StockIntelligenceDashboardExplanationPresenter;
+use App\Services\Chatbot\Presenters\ComponentStockAnalysisPresenter;
 use App\Services\Chatbot\Ai\AiAnswerRefiner;
 
 class AnswerComposer
@@ -59,6 +60,8 @@ class AnswerComposer
             new RfqDetailsPresenter(),
             new RfqsByStatusPresenter(),
             new RfqAllowedActionsPresenter(),
+
+            new ComponentStockAnalysisPresenter(),
 
             new NotificationSummaryPresenter(),
             new UnreadNotificationsPresenter(),
@@ -122,8 +125,15 @@ class AnswerComposer
             return $this->failed($toolResult, $role);
         }
 
+        $tool = $toolResult['tool']
+            ?? $toolResult['meta']['intent']
+            ?? $toolResult['intent']
+            ?? 'unknown';
+
+        $toolResult['tool'] = $tool;
+
         foreach ($this->presenters as $presenter) {
-            if ($presenter->supports($toolResult['tool'])) {
+            if ($presenter->supports($tool)) {
                 return $presenter->present($toolResult, $identity);
             }
         }

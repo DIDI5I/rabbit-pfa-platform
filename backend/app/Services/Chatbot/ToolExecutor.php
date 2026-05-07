@@ -49,6 +49,7 @@ use App\Services\Chatbot\WriteActions\Stock\StockMovementPreviewTool;
 use App\Services\Chatbot\WriteActions\Stock\SetStockLevelPreviewTool;
 use App\Services\Chatbot\WriteActions\PurchaseLot\FinalizePurchaseLotPreviewTool;
 use App\Services\Chatbot\WriteActions\PurchaseLot\UpdatePendingPurchaseLotCostsTool;
+use App\Services\Chatbot\Tools\ComponentStockAnalysisTool;
 use Throwable;
 
 
@@ -73,6 +74,8 @@ class ToolExecutor
             new UpdatePendingPurchaseLotCostsTool(),
             new FinalizePurchaseLotPreviewTool(),
 
+            new ComponentStockAnalysisTool(),
+            
             new OpenRfqPreviewTool(),
             new ExpireRfqPreviewTool(),
             new RejectRfqPreviewTool(),

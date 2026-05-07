@@ -180,4 +180,9 @@ class OpenAiCompatibleClient implements AiClientInterface
         return null;
     }
 
+    public function complete(string $prompt): string
+    {
+        return $this->refineAnswer($prompt);
+    }
+
 }

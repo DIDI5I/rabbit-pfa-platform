@@ -7,13 +7,16 @@ use App\Services\Chatbot\Ai\AiAnswerRefiner;
 use App\Services\Chatbot\WriteActions\PendingActionStore;
 use App\Services\Chatbot\WriteActions\WriteActionExecutor;
 use App\Services\Chatbot\WriteActions\WriteActionResponseBuilder;
+use App\Services\Chatbot\Planning\ToolPlanValidator;
+use App\Services\Chatbot\Planning\MultiReadToolExecutor;
+use App\Services\Chatbot\Presenters\MultiSourcePresenter;
 
 class ChatbotService
 {
     public function handle(string $message, array $context = []): array
     {
         $identity = (new IdentityResolver())->resolve();
-
+        $logger = new ChatbotLogger();
         $classifier = new IntentClassifier();
         $classification = $classifier->classify($message);
 
@@ -21,13 +24,90 @@ class ChatbotService
         $params = $classification['params'] ?? [];
 
         $registry = new ToolRegistry();
+        if ($intent === 'multi_source_read') {
+        $validation = (new ToolPlanValidator())->validate($classification, $identity);
+
+        if (!($validation['valid'] ?? false)) {
+            $classification['plan_validation'] = $validation;
+
+            return $this->aiFallback(
+                $message,
+                $identity,
+                'multi_source_read',
+                $classification
+            );
+        }
+
+        $multiResult = (new MultiReadToolExecutor())->execute(
+            $validation['plan'],
+            $identity
+        );
+
+        $response = (new MultiSourcePresenter())->present(
+            $multiResult,
+            $identity,
+            $message
+        );
+
+        return $this->finalizeResponse($response, $identity, null, [
+            'message' => $message,
+            'intent' => 'multi_source_read',
+            'tool' => 'multi_source_read',
+            'operation_type' => 'read_only',
+        ]);
+    }
         $toolDefinition = $registry->get($intent);
 
         $operationType = (new OperationClassifier())->classify($intent, $toolDefinition);
 
-        $logger = new ChatbotLogger();
+        $logger = $logger ?? new ChatbotLogger();
 
-        if ($operationType === 'unsupported') {
+        $aiRouterReason = $classification['ai_router']['reason'] ?? null;
+
+        if ($operationType === 'unsupported' && $aiRouterReason === 'multiple_write_actions_detected') {
+            return [
+                'message' => 'Multiple write actions detected.',
+                'data' => [
+                    'answer' => 'I detected more than one write action. Please do one action at a time. Ask for the first action, confirm or cancel it, then ask for the next action.',
+                    'ai_refined' => false,
+                    'intent' => 'multiple_write_actions_detected',
+                    'confidence' => 'high',
+                    'role' => $identity['role'] ?? 'guest',
+                    'operation_type' => 'write_action',
+                    'summary' => [
+                        'action_required' => false,
+                        'confirmation_required' => false,
+                        'pending_action' => false,
+                    ],
+                    'items_preview' => [],
+                    'result_meta' => [
+                        'ai_router' => [
+                            'used' => true,
+                            'reason' => 'multiple_write_actions_detected',
+                        ],
+                    ],
+                    'sources' => [
+                        [
+                            'tool' => 'ai_intent_router',
+                            'status' => 'multiple_write_actions_detected',
+                        ],
+                    ],
+                    'limitations' => [
+                        'Rabbit only allows one sensitive write action at a time.',
+                    ],
+                    'suggested_actions' => [
+                        'Ask for one action first',
+                        'Confirm or cancel before continuing',
+                    ],
+                ],
+            ];
+        }
+
+        if (in_array($intent, ['confirm_write_action', 'cancel_write_action'], true)) {
+            return $this->handlePendingWriteActionIntent($intent, $identity);
+        }
+
+        if (!is_array($toolDefinition)) {
             $logger->log([
                 'user_id' => $identity['user_id'] ?? null,
                 'role' => $identity['role'] ?? 'guest',
@@ -37,25 +117,10 @@ class ChatbotService
                 'status' => 'unsupported',
                 'operation_type' => 'unsupported',
                 'permission_status' => null,
-                'error' => 'No valid intent matched the request.',
+                'error' => 'No tool definition matched the request.',
             ]);
 
-            return $this->finalizeResponse(
-                $this->fail($identity, $intent, 'No valid intent matched the request.'),
-                $identity,
-                $logger,
-                [
-                    'message' => $message,
-                    'intent' => $intent,
-                    'tool' => null,
-                    'operation_type' => 'unsupported',
-                    'permission_status' => null,
-                ]
-            );
-        }
-
-        if (in_array($intent, ['confirm_write_action', 'cancel_write_action'], true)) {
-            return $this->handlePendingWriteActionIntent($intent, $identity);
+            return $this->aiFallback($message, $identity, $intent, $classification ?? []);
         }
 
         $guard = new PermissionGuard();
@@ -378,5 +443,55 @@ class ChatbotService
             $builder->confirmed($identity, $action, $result),
             $identity
         );
+    }
+
+   private function aiFallback(
+    string $message,
+    array $identity,
+    string $intent,
+    array $classification = []
+): array{
+        $response = [
+            'message' => 'Chatbot fallback answer generated.',
+            'data' => [
+                'answer' => "Rabbit could not match this request to a specific backend tool. I can help explain what kind of Rabbit data or module you may need, but I cannot invent live business data without a matched backend source.",
+                'intent' => 'ai_fallback',
+                'confidence' => 'low',
+                'role' => $identity['role'] ?? 'guest',
+                'operation_type' => 'read_only',
+                'summary' => [
+                    'original_intent' => $intent,
+                    'original_message' => $message,
+                ],
+                'items_preview' => [],
+                'result_meta' => [
+                    'ai_router' => $classification['ai_router'] ?? null,
+                    'classification_source' => $classification['source'] ?? null,
+                    'ai' => [
+                        'fallback_reason' => 'unsupported_intent',
+                    ],
+                ],
+                'sources' => [
+                    [
+                        'tool' => 'ai_fallback',
+                        'status' => 'used',
+                    ],
+                ],
+                'limitations' => [
+                    'No deterministic backend tool matched the request.',
+                    'The fallback must not invent stock, RFQ, order, supplier, forecast, or purchase data.',
+                    'Ask a more specific question to use exact backend data.',
+                ],
+                'suggested_actions' => [
+                    'Show stock for component 11',
+                    'Show stock intelligence summary',
+                    'Show reorder recommendations',
+                    'Show inventory alerts',
+                ],
+                'ai_refined' => false,
+            ],
+        ];
+
+        return $this->finalizeResponse($response, $identity);
     }
 }
