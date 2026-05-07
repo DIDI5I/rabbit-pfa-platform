@@ -117,6 +117,8 @@ class ChatbotService
                 'mark_notification_read',
                 'reject_rfq',
                 'accept_rfq',
+                'expire_rfq',
+                'open_rfq',
             ], true)) {
             
             $toolResult = (new ToolExecutor())->execute($intent, $params, $identity, $context);

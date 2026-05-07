@@ -22,6 +22,22 @@ class RfqWriteToolRegistry
                 'sensitive' => true,
                 'required_params' => ['rfq_id'],
             ],
+
+            'expire_rfq' => [
+                'roles' => ['owner'],
+                'tool' => 'expire_rfq',
+                'operation_type' => 'write_action',
+                'sensitive' => true,
+                'required_params' => ['rfq_id'],
+            ],
+
+            'open_rfq' => [
+                'roles' => ['owner'],
+                'tool' => 'open_rfq',
+                'operation_type' => 'write_action',
+                'sensitive' => true,
+                'required_params' => ['rfq_id'],
+            ],
         ];
     }
 }

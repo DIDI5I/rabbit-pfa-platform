@@ -12,6 +12,16 @@ class RfqWriteIntentDetector implements IntentDetectorInterface
         $normalized = $this->normalize($text);
 
         $rfqId = $this->extractRfqId($normalized);
+
+        if ($rfqId !== null && $this->wantsOpen($normalized)) {
+            return TextIntentUtils::result(
+                'open_rfq',
+                [
+                    'rfq_id' => $rfqId,
+                ],
+                'high'
+            );
+        }
         if ($rfqId !== null && $this->wantsAccept($normalized)) {
             return TextIntentUtils::result(
                 'accept_rfq',
@@ -21,6 +31,16 @@ class RfqWriteIntentDetector implements IntentDetectorInterface
                 'high'
             );
         }
+
+        if ($rfqId !== null && $this->wantsExpire($normalized)) {
+                return TextIntentUtils::result(
+                    'expire_rfq',
+                    [
+                        'rfq_id' => $rfqId,
+                    ],
+                    'high'
+                );
+            }
         if ($rfqId !== null && $this->wantsReject($normalized)) {
             return TextIntentUtils::result(
                 'reject_rfq',
@@ -79,5 +99,30 @@ class RfqWriteIntentDetector implements IntentDetectorInterface
             || str_contains($text, 'approuver rfq')
             || str_contains($text, 'accepter demande de devis')
             || str_contains($text, 'valider demande de devis');
+    }
+
+    private function wantsExpire(string $text): bool
+    {
+        return str_contains($text, 'expire rfq')
+            || str_contains($text, 'close rfq')
+            || str_contains($text, 'mark rfq as expired')
+            || str_contains($text, 'expire request for quote')
+            || str_contains($text, 'expirer rfq')
+            || str_contains($text, 'fermer rfq')
+            || str_contains($text, 'expirer demande de devis');
+    }
+
+    private function wantsOpen(string $text): bool
+    {
+        return str_contains($text, 'open rfq')
+            || str_contains($text, 'publish rfq')
+            || str_contains($text, 'send rfq')
+            || str_contains($text, 'send rfq to supplier')
+            || str_contains($text, 'open request for quote')
+            || str_contains($text, 'ouvrir rfq')
+            || str_contains($text, 'publier rfq')
+            || str_contains($text, 'envoyer rfq')
+            || str_contains($text, 'ouvrir demande de devis')
+            || str_contains($text, 'envoyer demande de devis');
     }
 }

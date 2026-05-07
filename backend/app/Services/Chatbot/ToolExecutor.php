@@ -42,7 +42,10 @@ use App\Services\Chatbot\WriteActions\Notification\MarkAllNotificationsReadPrevi
 use App\Services\Chatbot\WriteActions\Notification\MarkNotificationReadPreviewTool;
 use App\Services\Chatbot\WriteActions\Rfq\RejectRfqPreviewTool;
 use App\Services\Chatbot\WriteActions\Rfq\AcceptRfqPreviewTool;
+use App\Services\Chatbot\WriteActions\Rfq\ExpireRfqPreviewTool;
+use App\Services\Chatbot\WriteActions\Rfq\OpenRfqPreviewTool;
 use Throwable;
+
 
 class ToolExecutor
 {
@@ -59,9 +62,11 @@ class ToolExecutor
             new NavigationTool(),
             new ShowMoreTool(),
 
+            new OpenRfqPreviewTool(),
+            new ExpireRfqPreviewTool(),
             new RejectRfqPreviewTool(),
             new AcceptRfqPreviewTool(),
-            
+
             new RfqSummaryTool(),
             new RfqDetailsTool(),
             new RfqsByStatusTool(),
@@ -104,28 +109,7 @@ class ToolExecutor
             new PurchaseLotsByProductTool(),
             new StockMovementsByComponentTool(),
         ];
-                /*
-        $this->handlers = [
-            new RoleHelpTool(),
-            new NavigationTool(),
-            new ShowMoreTool(),
-
-            new CatalogSearchTool(),
-            new CatalogProductDetailsTool(),
-            new CatalogProductRelationsTool(),
-            new CatalogProductPromotionsTool(),
-            new CatalogProductReviewsTool(),
-            new CatalogProductRatingSummaryTool(),
-
-            new ActivePromotionsTool(),
-
-            new InventorySummaryTool(),
-            new InventoryAlertsTool(),
-            new CostRollupTool(),
-            new ReorderRecommendationsTool(),
-            new DashboardStockSummaryTool(),
-        ];
-        */
+       
     }
 
     public function execute(string $intent, array $params, array $identity, array $context = []): array

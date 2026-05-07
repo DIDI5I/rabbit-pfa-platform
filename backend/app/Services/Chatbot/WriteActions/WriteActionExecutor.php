@@ -7,6 +7,8 @@ use App\Services\Chatbot\WriteActions\Notification\MarkAllNotificationsReadExecu
 use App\Services\Chatbot\WriteActions\Notification\MarkNotificationReadExecutor;
 use App\Services\Chatbot\WriteActions\Rfq\RejectRfqExecutor;
 use App\Services\Chatbot\WriteActions\Rfq\AcceptRfqExecutor;
+use App\Services\Chatbot\WriteActions\Rfq\ExpireRfqExecutor;
+use App\Services\Chatbot\WriteActions\Rfq\OpenRfqExecutor;
 
 class WriteActionExecutor
 {
@@ -20,6 +22,8 @@ class WriteActionExecutor
             new MarkNotificationReadExecutor(),
             new RejectRfqExecutor(),
             new AcceptRfqExecutor(),
+            new ExpireRfqExecutor(),
+            new OpenRfqExecutor(),
         ];
     }
 
