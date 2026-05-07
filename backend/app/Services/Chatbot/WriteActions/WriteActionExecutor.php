@@ -9,6 +9,7 @@ use App\Services\Chatbot\WriteActions\Rfq\RejectRfqExecutor;
 use App\Services\Chatbot\WriteActions\Rfq\AcceptRfqExecutor;
 use App\Services\Chatbot\WriteActions\Rfq\ExpireRfqExecutor;
 use App\Services\Chatbot\WriteActions\Rfq\OpenRfqExecutor;
+use App\Services\Chatbot\WriteActions\Order\UpdateOrderStatusExecutor;
 
 class WriteActionExecutor
 {
@@ -24,6 +25,7 @@ class WriteActionExecutor
             new AcceptRfqExecutor(),
             new ExpireRfqExecutor(),
             new OpenRfqExecutor(),
+            new UpdateOrderStatusExecutor(),
         ];
     }
 

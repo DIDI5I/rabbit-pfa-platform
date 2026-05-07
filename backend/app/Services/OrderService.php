@@ -111,36 +111,10 @@ class OrderService
 
     public function updateStatus(int $orderId, UpdateOrderStatusRequest $request): array
     {
-        $this->authorizeOwnerOnly();
-
-        $order = $this->orders->findById($orderId);
-
-        if (!$order) {
-            throw new ValidationException([
-                'order_id' => ['Order not found.'],
-            ]);
-        }
-
-        $newStatus = $request->status();
-
-        if ($newStatus === 'processing') {
-            $this->createSaleStockMovements($orderId);
-        }
-
-        if ($newStatus === 'cancelled') {
-            $this->restoreStockForCancelledOrder($orderId);
-        }
-
-        $this->orders->updateStatus($orderId, $newStatus);
-
-        $updatedOrder = $this->orders->findById($orderId);
-        $updatedOrder['items'] = $this->orders->findItemsByOrderId($orderId);
-
-        $this->notifyClientOrderStatusChanged($updatedOrder, $order['status'], $newStatus);
-
-        return ApiResponse::success('Order status updated successfully', $updatedOrder);
+        return $this->updateStatusByData($orderId, $request->status());
     }
 
+   
     private function prepareItems(array $items): array
     {
         $prepared = [];
@@ -332,4 +306,51 @@ class OrderService
             'auth' => ['Only owner can update order status.'],
         ]);
     }
+    public function updateStatusByData(int $orderId, string $newStatus): array
+    {
+        $newStatus = strtolower(trim($newStatus));
+
+        $allowedStatuses = [
+            'pending',
+            'paid',
+            'processing',
+            'shipped',
+            'delivered',
+            'cancelled',
+        ];
+
+        if (!in_array($newStatus, $allowedStatuses, true)) {
+            throw new \App\Exceptions\ValidationException([
+                'status' => ['Invalid order status.'],
+            ]);
+        }
+        $this->authorizeOwnerOnly();
+
+        $order = $this->orders->findById($orderId);
+
+        if (!$order) {
+            throw new ValidationException([
+                    'order_id' => ['Order not found.'],
+            ]);
+        }
+
+
+        if ($newStatus === 'processing') {
+            $this->createSaleStockMovements($orderId);
+        }
+
+        if ($newStatus === 'cancelled') {
+            $this->restoreStockForCancelledOrder($orderId);
+        }
+
+        $this->orders->updateStatus($orderId, $newStatus);
+
+        $updatedOrder = $this->orders->findById($orderId);
+        $updatedOrder['items'] = $this->orders->findItemsByOrderId($orderId);
+
+        $this->notifyClientOrderStatusChanged($updatedOrder, $order['status'], $newStatus);
+
+        return ApiResponse::success('Order status updated successfully', $updatedOrder);
+    }
+     
 }

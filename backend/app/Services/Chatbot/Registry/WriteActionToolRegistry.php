@@ -4,7 +4,7 @@ namespace App\Services\Chatbot\Registry;
 
 use App\Services\Chatbot\WriteActions\Notification\NotificationWriteToolRegistry;
 use App\Services\Chatbot\WriteActions\Rfq\RfqWriteToolRegistry;
-
+use App\Services\Chatbot\WriteActions\Order\OrderWriteToolRegistry;
 class WriteActionToolRegistry
 {
     public function tools(): array
@@ -28,7 +28,8 @@ class WriteActionToolRegistry
             ],
         ],
         (new \App\Services\Chatbot\WriteActions\Notification\NotificationWriteToolRegistry())->tools(),
-        (new RfqWriteToolRegistry())->tools()
+        (new RfqWriteToolRegistry())->tools(),
+        (new OrderWriteToolRegistry())->tools()
     );
     }
 }

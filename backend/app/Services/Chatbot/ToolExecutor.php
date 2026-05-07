@@ -44,6 +44,7 @@ use App\Services\Chatbot\WriteActions\Rfq\RejectRfqPreviewTool;
 use App\Services\Chatbot\WriteActions\Rfq\AcceptRfqPreviewTool;
 use App\Services\Chatbot\WriteActions\Rfq\ExpireRfqPreviewTool;
 use App\Services\Chatbot\WriteActions\Rfq\OpenRfqPreviewTool;
+use App\Services\Chatbot\WriteActions\Order\UpdateOrderStatusPreviewTool;
 use Throwable;
 
 
@@ -72,6 +73,8 @@ class ToolExecutor
             new RfqsByStatusTool(),
             new RfqAllowedActionsTool(),
 
+            new UpdateOrderStatusPreviewTool(),
+            
             new MarkAllNotificationsReadPreviewTool(),
             new MarkNotificationReadPreviewTool(),
 

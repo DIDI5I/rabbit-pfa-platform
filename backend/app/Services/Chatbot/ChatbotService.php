@@ -119,6 +119,7 @@ class ChatbotService
                 'accept_rfq',
                 'expire_rfq',
                 'open_rfq',
+                'update_order_status',
             ], true)) {
             
             $toolResult = (new ToolExecutor())->execute($intent, $params, $identity, $context);
