@@ -1,371 +1,414 @@
 /* ============================================================
-   chatbot.js — Rabbit B2B MRO Platform
-   Widget chatbot flottant : tiroir + messages + rendu réponse.
-   Respecte le contrat de réponse backend chatbot.
+   chatbot.js — Rabbit frontend chatbot widget
+   Calls POST /chatbot/ask
+   Uses chatbot.css class system.
    ============================================================ */
 
-const Chatbot = (() => {
-  let _isOpen     = false;
-  let _loading    = false;
-  let _quickPrompts = [];
+const RabbitChatbot = {
+  isOpen: false,
+  isSending: false,
 
-  // ── Injecte le HTML du widget ──────────────────────────────
-  function mount(quickPrompts = []) {
-    _quickPrompts = quickPrompts;
-    if (document.getElementById("chatbot-fab")) return; // déjà monté
+  init() {
+    this.fab = document.getElementById("chatbot-fab");
+    this.badge = document.getElementById("chatbot-fab-badge");
+    this.overlay = document.getElementById("chatbot-overlay");
+    this.drawer = document.getElementById("chatbot-drawer");
+    this.closeBtn = document.getElementById("chatbot-close-btn");
+    this.form = document.getElementById("chatbot-form");
+    this.input = document.getElementById("chatbot-input");
+    this.sendBtn = document.getElementById("chatbot-send-btn");
+    this.messages = document.getElementById("chatbot-messages");
 
-    document.body.insertAdjacentHTML("beforeend", `
-      <!-- FAB -->
-      <button class="chatbot-fab" id="chatbot-fab" title="${L.chatbot.title}">
-        <i class="fas fa-comment-dots"></i>
-        <span class="chatbot-fab-badge" id="chatbot-fab-badge"></span>
-      </button>
+    if (!this.fab || !this.drawer || !this.form || !this.input || !this.messages) {
+      return;
+    }
 
-      <!-- Overlay -->
-      <div class="chatbot-overlay" id="chatbot-overlay"></div>
+    this.fab.addEventListener("click", () => this.toggle());
+    this.overlay?.addEventListener("click", () => this.close());
+    this.closeBtn?.addEventListener("click", () => this.close());
 
-      <!-- Drawer -->
-      <div class="chatbot-drawer" id="chatbot-drawer">
-        <div class="chatbot-header">
-          <div class="chatbot-header-icon"><i class="fas fa-robot"></i></div>
-          <div class="chatbot-header-text">
-            <div class="chatbot-header-title">${L.chatbot.title}</div>
-            <div class="chatbot-header-sub">${L.chatbot.subtitle}</div>
-          </div>
-          <button class="chatbot-close-btn" id="chatbot-close">
-            <i class="fas fa-xmark"></i>
-          </button>
-        </div>
-
-        <div class="chatbot-messages" id="chatbot-messages">
-          <div class="chatbot-welcome">
-            <div class="chatbot-welcome-icon"><i class="fas fa-robot"></i></div>
-            <div class="chatbot-welcome-title">${L.chatbot.welcome}</div>
-            <div class="chatbot-welcome-sub">${L.chatbot.welcomeSub}</div>
-          </div>
-        </div>
-
-        <div class="chatbot-quick-bar" id="chatbot-quick-bar"></div>
-
-        <div class="chatbot-input-area">
-          <textarea
-            class="chatbot-input"
-            id="chatbot-input"
-            placeholder="${L.chatbot.placeholder}"
-            rows="1"
-          ></textarea>
-          <button class="chatbot-send-btn" id="chatbot-send">
-            <i class="fas fa-paper-plane"></i>
-          </button>
-        </div>
-      </div>
-    `);
-
-    _bindEvents();
-    _renderQuickBar();
-  }
-
-  // ── Events ──────────────────────────────────────────────────
-  function _bindEvents() {
-    document.getElementById("chatbot-fab").addEventListener("click", toggle);
-    document.getElementById("chatbot-overlay").addEventListener("click", close);
-    document.getElementById("chatbot-close").addEventListener("click", close);
-    document.getElementById("chatbot-send").addEventListener("click", _handleSend);
-
-    const input = document.getElementById("chatbot-input");
-    input.addEventListener("keydown", e => {
-      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); _handleSend(); }
+    this.form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      await this.sendCurrentMessage();
     });
-    input.addEventListener("input", () => {
-      input.style.height = "auto";
-      input.style.height = Math.min(input.scrollHeight, 120) + "px";
+
+    this.input.addEventListener("keydown", async (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        await this.sendCurrentMessage();
+      }
     });
-  }
 
-  // ── Quick bar ────────────────────────────────────────────────
-  function _renderQuickBar() {
-    const bar = document.getElementById("chatbot-quick-bar");
-    if (!bar || !_quickPrompts.length) return;
-    bar.innerHTML = _quickPrompts.map(p =>
-      `<button class="chatbot-quick-btn" data-prompt="${esc(p.message)}">${esc(p.label)}</button>`
-    ).join("");
-    bar.addEventListener("click", e => {
-      const btn = e.target.closest(".chatbot-quick-btn");
-      if (btn) _send(btn.dataset.prompt);
-    });
-  }
+    this.input.addEventListener("input", () => this.autoResizeInput());
 
-  // ── Toggle / open / close ────────────────────────────────────
-  function toggle() { _isOpen ? close() : open(); }
+    document.querySelectorAll(".chatbot-quick-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const prompt = btn.dataset.prompt;
+        if (!prompt) return;
 
-  function open() {
-    _isOpen = true;
-    document.getElementById("chatbot-drawer").classList.add("open");
-    document.getElementById("chatbot-overlay").classList.add("open");
-    document.getElementById("chatbot-input").focus();
-  }
-
-  function close() {
-    _isOpen = false;
-    document.getElementById("chatbot-drawer").classList.remove("open");
-    document.getElementById("chatbot-overlay").classList.remove("open");
-  }
-
-  // ── Send ─────────────────────────────────────────────────────
-  function _handleSend() {
-    const input = document.getElementById("chatbot-input");
-    const msg   = input.value.trim();
-    if (!msg || _loading) return;
-    input.value = "";
-    input.style.height = "auto";
-    _send(msg);
-  }
-
-  async function _send(message) {
-    if (_loading) return;
-    _loading = true;
-
-    _appendUserMessage(message);
-    _showTyping();
-    _setSendDisabled(true);
-
-    try {
-      const response = await chatbotService.ask(message);
-      _hideTyping();
-      _renderBotResponse(response);
-    } catch (err) {
-      _hideTyping();
-      _appendErrorMessage(err?.error || err?.message || L.chatbot.errorGeneric);
-    } finally {
-      _loading = false;
-      _setSendDisabled(false);
-    }
-  }
-
-  // ── Rendu messages ───────────────────────────────────────────
-  function _appendUserMessage(text) {
-    const el = document.createElement("div");
-    el.className = "chatbot-msg user fade-up";
-    el.innerHTML = `
-      <div class="chatbot-bubble">${esc(text)}</div>
-      <div class="chatbot-msg-meta">${formatRelativeDate(new Date().toISOString())}</div>
-    `;
-    _append(el);
-  }
-
-  function _appendErrorMessage(text) {
-    const el = document.createElement("div");
-    el.className = "chatbot-msg bot fail fade-up";
-    el.innerHTML = `<div class="chatbot-bubble"><i class="fas fa-circle-exclamation"></i> ${esc(text)}</div>`;
-    _append(el);
-  }
-
-  function _renderBotResponse(r) {
-    // r = data from chatbot endpoint (already unwrapped)
-    const isPermDenied = r.operation_type === "unsupported" ||
-                         (r.answer || "").toLowerCase().includes("permission");
-
-    const el = document.createElement("div");
-    el.className = `chatbot-msg bot fade-up${isPermDenied ? " denied" : ""}`;
-
-    let html = "";
-
-    // ── Réponse principale ─────────────────────────────────
-    html += `<div class="chatbot-bubble">${_formatAnswer(r.answer || L.chatbot.noAnswer)}</div>`;
-
-    // ── Intent / confiance strip ───────────────────────────
-    if (r.intent || r.confidence || r.operation_type) {
-      html += `<div class="chatbot-intent-strip">`;
-      if (r.intent)         html += `<span class="chatbot-intent-tag"><i class="fas fa-tag"></i> ${esc(r.intent)}</span>`;
-      if (r.confidence)     html += confidenceBadge(r.confidence);
-      if (r.operation_type) html += `<span class="chatbot-op-tag">${esc(r.operation_type)}</span>`;
-      html += `</div>`;
-    }
-
-    // ── Aperçu des résultats ───────────────────────────────
-    if (Array.isArray(r.items_preview) && r.items_preview.length) {
-      html += `<div style="margin-top:var(--space-3)">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:var(--space-2)">${L.chatbot.resultsPreview}</div>
-        <div class="chatbot-items-preview">
-          ${r.items_preview.map(_renderPreviewItem).join("")}
-        </div>
-      </div>`;
-    }
-
-    // ── Résumé ─────────────────────────────────────────────
-    if (r.summary && typeof r.summary === "object" && Object.keys(r.summary).length) {
-      html += _renderSummary(r.summary);
-    }
-
-    // ── Afficher plus ──────────────────────────────────────
-    if (r.result_meta?.has_more) {
-      html += `<button class="chatbot-suggestion-btn" style="margin-top:var(--space-2)" data-show-more="1">
-        <i class="fas fa-chevron-down"></i> ${L.chatbot.showMore}
-      </button>`;
-    }
-
-    // ── Limites ────────────────────────────────────────────
-    if (Array.isArray(r.limitations) && r.limitations.length) {
-      html += `<div style="margin-top:var(--space-2);padding:8px 10px;background:var(--amber-light);border-radius:var(--r-md);border:1px solid #FDE68A">
-        <div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:4px;text-transform:uppercase">
-          <i class="fas fa-triangle-exclamation"></i> ${L.chatbot.limitations}
-        </div>
-        ${r.limitations.map(l => `<div style="font-size:12px;color:#78350F">${esc(l)}</div>`).join("")}
-      </div>`;
-    }
-
-    // ── Actions suggérées ──────────────────────────────────
-    if (Array.isArray(r.suggested_actions) && r.suggested_actions.length) {
-      html += `<div class="chatbot-suggestions" style="margin-top:var(--space-2)">
-        ${r.suggested_actions.map(a =>
-          `<button class="chatbot-suggestion-btn" data-prompt="${esc(a)}">${esc(a)}</button>`
-        ).join("")}
-      </div>`;
-    }
-
-    // ── Sources ────────────────────────────────────────────
-    if (Array.isArray(r.sources) && r.sources.length) {
-      html += `<div class="chatbot-sources" style="margin-top:var(--space-2)">
-        <div style="font-size:10px;font-weight:700;color:var(--text-3);margin-bottom:4px;text-transform:uppercase">
-          ${L.chatbot.sources}
-        </div>
-        ${r.sources.map(s => {
-          const icon = s.status === "used"    ? "fa-circle-check"    :
-                       s.status === "denied"  ? "fa-circle-xmark"    :
-                       s.status === "failed"  ? "fa-circle-exclamation" :
-                                               "fa-circle-minus";
-          const col  = s.status === "used"   ? "var(--green)" :
-                       s.status === "denied" ? "var(--red)"   : "var(--text-3)";
-          return `<div class="chatbot-source-item" style="color:${col}">
-            <i class="fas ${icon}"></i>
-            <span>${esc(s.tool)}</span>
-            <span style="color:var(--text-4)">— ${esc(s.status)}</span>
-          </div>`;
-        }).join("")}
-      </div>`;
-    }
-
-    // ── Timestamp ──────────────────────────────────────────
-    html += `<div class="chatbot-msg-meta">${formatRelativeDate(new Date().toISOString())}</div>`;
-
-    el.innerHTML = html;
-
-    // ── Bind suggestion/show-more buttons ─────────────────
-    el.querySelectorAll("[data-prompt]").forEach(btn => {
-      btn.addEventListener("click", () => _send(btn.dataset.prompt));
-    });
-    el.querySelectorAll("[data-show-more]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        btn.remove();
-        _send("show more");
+        this.input.value = prompt;
+        this.autoResizeInput();
+        await this.sendCurrentMessage();
       });
     });
+  },
 
-    // ── Navigation ─────────────────────────────────────────
-    if (r.navigation?.target_page) {
-      const nav = r.navigation;
-      // Navigation interne (SPA)
-      const hash = _pageToHash(nav.target_page);
-      if (hash) {
-        Router.navigate(hash);
-      } else {
-        window.location.href = nav.target_page;
-      }
-      showNavBubble(
-        nav.previous_page_link || "",
-        nav.bubble_text || L.chatbot.navBubbleDefault,
-        nav.bubble_duration_ms || 4000
-      );
+  toggle() {
+    this.isOpen ? this.close() : this.open();
+  },
+
+  open() {
+    this.isOpen = true;
+    this.drawer.classList.add("open");
+    this.overlay?.classList.add("open");
+
+    if (this.badge) {
+      this.badge.style.display = "none";
     }
 
-    _append(el);
-  }
+    setTimeout(() => this.input?.focus(), 60);
+  },
 
-  // ── Helpers de rendu ─────────────────────────────────────────
-  function _formatAnswer(text) {
-    // Convertit les sauts de ligne en <br>
-    return esc(text).replace(/\n/g, "<br>");
-  }
+  close() {
+    this.isOpen = false;
+    this.drawer.classList.remove("open");
+    this.overlay?.classList.remove("open");
+  },
 
-  function _renderPreviewItem(item) {
-    // Rendu générique d'un item de prévisualisation
-    const name = item.name || item.product_name || item.component_name || item.title || "—";
-    const sub  = item.sku  || item.status || item.category || "";
-    const val  = item.current_stock != null ? `${item.current_stock} unités`
-               : item.quoted_price  != null ? formatMAD(item.quoted_price)
-               : item.price         != null ? formatMAD(item.price)
-               : "";
+  async sendCurrentMessage() {
+    const message = this.input.value.trim();
 
-    return `<div style="display:flex;align-items:center;gap:var(--space-2);
-                         padding:8px 10px;background:var(--bg);border-radius:var(--r-md);
-                         border:1px solid var(--border);margin-bottom:4px">
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name)}</div>
-        ${sub ? `<div style="font-size:11px;color:var(--text-3)">${esc(sub)}</div>` : ""}
+    if (!message || this.isSending) {
+      return;
+    }
+
+    this.clearWelcome();
+    this.input.value = "";
+    this.autoResizeInput();
+
+    this.addMessage(message, "user");
+
+    await this.askBackend(message);
+  },
+
+  async askBackend(message) {
+    this.isSending = true;
+    this.setFormDisabled(true);
+
+    const typingId = this.addTypingMessage();
+
+    try {
+      const response = await apiFetchJson("/chatbot/ask", {
+        method: "POST",
+        body: JSON.stringify({ message }),
+      });
+
+      const payload = response?.data ?? response;
+      const html = this.renderBotResponse(payload);
+
+      this.replaceMessageHtml(typingId, html, "bot");
+
+      this.bindSuggestedActions();
+
+      if (payload?.result_meta?.ai) {
+        console.log("CHATBOT AI META:", payload.result_meta.ai);
+      }
+    } catch (err) {
+      console.error("Chatbot error:", err);
+      this.replaceMessageHtml(
+        typingId,
+        this.escapeHtml(this.formatError(err)),
+        "fail"
+      );
+    } finally {
+      this.isSending = false;
+      this.setFormDisabled(false);
+      this.input.focus();
+    }
+  },
+
+  clearWelcome() {
+    const welcome = this.messages.querySelector(".chatbot-welcome");
+    if (welcome) welcome.remove();
+  },
+
+  addTypingMessage() {
+    const id = this.makeId();
+
+    const wrapper = document.createElement("div");
+    wrapper.id = id;
+    wrapper.className = "chatbot-msg bot";
+    wrapper.innerHTML = `
+      <div class="chatbot-typing">
+        <span></span>
+        <span></span>
+        <span></span>
       </div>
-      ${val ? `<div style="font-size:12px;font-weight:700;color:var(--blue);flex-shrink:0">${esc(val)}</div>` : ""}
-    </div>`;
-  }
+    `;
 
-  function _renderSummary(summary) {
-    const entries = Object.entries(summary).slice(0, 6);
-    if (!entries.length) return "";
-    return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:var(--space-2)">
-      ${entries.map(([k, v]) => `
-        <div style="background:var(--bg);border-radius:var(--r-md);padding:8px 10px;border:1px solid var(--border)">
-          <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em">${esc(k)}</div>
-          <div style="font-size:13px;font-weight:700;margin-top:2px">${esc(String(v))}</div>
-        </div>`).join("")}
-    </div>`;
-  }
+    this.messages.appendChild(wrapper);
+    this.scrollToBottom();
 
-  // ── Typing indicator ─────────────────────────────────────────
-  function _showTyping() {
-    const el = document.createElement("div");
-    el.className = "chatbot-msg bot";
-    el.id = "chatbot-typing";
-    el.innerHTML = `<div class="chatbot-typing"><span></span><span></span><span></span></div>
-                    <div class="chatbot-msg-meta">${L.chatbot.typing}</div>`;
-    _append(el);
-  }
+    return id;
+  },
 
-  function _hideTyping() {
-    document.getElementById("chatbot-typing")?.remove();
-  }
+  addMessage(text, type) {
+    const id = this.makeId();
 
-  // ── Utils ────────────────────────────────────────────────────
-  function _append(el) {
-    const container = document.getElementById("chatbot-messages");
-    // Supprime le welcome si présent
-    container.querySelector(".chatbot-welcome")?.remove();
-    container.appendChild(el);
-    container.scrollTop = container.scrollHeight;
-  }
+    const wrapper = document.createElement("div");
+    wrapper.id = id;
+    wrapper.className = `chatbot-msg ${type}`;
 
-  function _setSendDisabled(val) {
-    const btn = document.getElementById("chatbot-send");
-    if (btn) btn.disabled = val;
-  }
+    wrapper.innerHTML = `
+      <div class="chatbot-bubble">${this.escapeHtml(text)}</div>
+      <div class="chatbot-msg-meta">
+        <i class="fas ${type === "user" ? "fa-user" : "fa-robot"}"></i>
+        <span>${type === "user" ? "Vous" : "Rabbit"}</span>
+      </div>
+    `;
 
-  function _pageToHash(targetPage) {
-    // Mappe /owner/inventory → "inventory" pour le routeur SPA
-    const map = {
-      "/owner/inventory":         "inventory",
-      "/owner/dashboard":         "dashboard",
-      "/owner/products":          "products",
-      "/owner/rfqs":              "rfqs",
-      "/owner/purchase-lots":     "lots",
-      "/owner/promotions":        "promotions",
-      "/owner/reviews":           "reviews",
-      "/owner/notifications":     "notifications",
-      "/owner/intelligence":      "intelligence",
-      "/owner/procurement":       "procurement",
-      "/owner/suppliers":         "suppliers",
-      "/owner/movements":         "movements",
+    this.messages.appendChild(wrapper);
+    this.scrollToBottom();
+
+    return id;
+  },
+
+  replaceMessageHtml(id, html, type) {
+    const wrapper = document.getElementById(id);
+    if (!wrapper) return;
+
+    const normalizedType = type === "fail" ? "bot fail" : type;
+
+    wrapper.className = `chatbot-msg ${normalizedType}`;
+    wrapper.innerHTML = `
+      <div class="chatbot-bubble">${html}</div>
+      <div class="chatbot-msg-meta">
+        <i class="fas ${type === "fail" ? "fa-triangle-exclamation" : "fa-robot"}"></i>
+        <span>${type === "fail" ? "Erreur" : "Rabbit"}</span>
+      </div>
+    `;
+
+    this.scrollToBottom();
+  },
+
+  renderBotResponse(payload) {
+    const answer = payload?.answer || "Réponse reçue.";
+    const intent = payload?.intent || null;
+    const confidence = payload?.confidence || null;
+    const role = payload?.role || null;
+    const operation = payload?.operation_type || null;
+    const summary = payload?.summary || null;
+    const items = Array.isArray(payload?.items_preview) ? payload.items_preview : [];
+    const sources = Array.isArray(payload?.sources) ? payload.sources : [];
+    const limitations = Array.isArray(payload?.limitations) ? payload.limitations : [];
+    const actions = Array.isArray(payload?.suggested_actions) ? payload.suggested_actions : [];
+
+    return `
+      <div>${this.escapeHtml(answer)}</div>
+
+      ${
+        intent || confidence || role || operation
+          ? `<div class="chatbot-intent-strip">
+              ${intent ? `<span class="chatbot-intent-tag">${this.escapeHtml(intent)}</span>` : ""}
+              ${confidence ? `<span class="chatbot-op-tag">Confiance: ${this.escapeHtml(confidence)}</span>` : ""}
+              ${role ? `<span class="chatbot-op-tag">Rôle: ${this.escapeHtml(role)}</span>` : ""}
+              ${operation ? `<span class="chatbot-op-tag">${this.escapeHtml(operation)}</span>` : ""}
+            </div>`
+          : ""
+      }
+
+      ${summary ? this.renderSummary(summary) : ""}
+
+      ${items.length ? this.renderItemsPreview(items) : ""}
+
+      ${sources.length ? this.renderSources(sources) : ""}
+
+      ${limitations.length ? this.renderLimitations(limitations) : ""}
+
+      ${
+        actions.length
+          ? `<div class="chatbot-suggestions">
+              ${actions.map((action) => `
+                <button class="chatbot-suggestion-btn" type="button" data-prompt="${this.escapeHtml(action)}">
+                  ${this.escapeHtml(action)}
+                </button>
+              `).join("")}
+            </div>`
+          : ""
+      }
+    `;
+  },
+
+  renderSummary(summary) {
+    const rows = Object.entries(summary)
+      .filter(([_, value]) => value !== null && typeof value !== "object")
+      .map(([key, value]) => `
+        <div class="chatbot-source-item">
+          <i class="fas fa-chart-simple"></i>
+          <span>${this.escapeHtml(this.labelize(key))}: <strong>${this.escapeHtml(String(value))}</strong></span>
+        </div>
+      `)
+      .join("");
+
+    return `
+      <div class="chatbot-sources">
+        ${rows}
+      </div>
+    `;
+  },
+
+  renderItemsPreview(items) {
+    return `
+      <div class="chatbot-sources">
+        ${items.map((item) => {
+          const title =
+            item.name ||
+            item.product_name ||
+            item.client_name ||
+            item.sku ||
+            `Commande #${item.order_id || item.id || item.product_id || "—"}`;
+
+          const meta = [
+            item.status ? `Statut: ${item.status}` : null,
+            item.total_amount != null ? `Total: ${item.total_amount} MAD` : null,
+            item.current_stock != null ? `Stock: ${item.current_stock}` : null,
+            item.low_stock_threshold != null ? `Seuil: ${item.low_stock_threshold}` : null,
+            item.recommended_reorder_quantity != null ? `Qté: ${item.recommended_reorder_quantity}` : null,
+            item.estimated_reorder_value != null ? `Valeur: ${item.estimated_reorder_value} MAD` : null,
+            item.priority ? `Priorité: ${item.priority}` : null,
+            item.confidence ? `Confiance: ${item.confidence}` : null,
+          ].filter(Boolean).join(" · ");
+
+          return `
+            <div class="chatbot-source-item">
+              <i class="fas fa-circle-dot"></i>
+              <span><strong>${this.escapeHtml(title)}</strong>${meta ? ` — ${this.escapeHtml(meta)}` : ""}</span>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  },
+
+  renderSources(sources) {
+    return `
+      <div class="chatbot-sources">
+        ${sources.map((source) => `
+          <div class="chatbot-source-item">
+            <i class="fas fa-database"></i>
+            <span>Source: ${this.escapeHtml(source.tool || "outil")} · ${this.escapeHtml(source.status || "utilisé")}</span>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  },
+
+  renderLimitations(limitations) {
+    return `
+      <div class="chatbot-sources">
+        ${limitations.map((limitation) => `
+          <div class="chatbot-source-item">
+            <i class="fas fa-circle-exclamation"></i>
+            <span>Limite: ${this.escapeHtml(limitation)}</span>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  },
+
+  bindSuggestedActions() {
+    this.messages.querySelectorAll(".chatbot-suggestion-btn").forEach((btn) => {
+      if (btn.dataset.bound === "1") return;
+
+      btn.dataset.bound = "1";
+      btn.addEventListener("click", async () => {
+        const prompt = btn.dataset.prompt;
+        if (!prompt) return;
+
+        this.input.value = prompt;
+        this.autoResizeInput();
+        await this.sendCurrentMessage();
+      });
+    });
+  },
+
+  setFormDisabled(disabled) {
+    this.input.disabled = disabled;
+    if (this.sendBtn) this.sendBtn.disabled = disabled;
+  },
+
+  autoResizeInput() {
+    if (!this.input) return;
+
+    this.input.style.height = "auto";
+    this.input.style.height = `${Math.min(this.input.scrollHeight, 120)}px`;
+  },
+
+  scrollToBottom() {
+    this.messages.scrollTop = this.messages.scrollHeight;
+  },
+
+  makeId() {
+    return `chatbot_msg_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  },
+
+  labelize(key) {
+    const labels = {
+      total: "Total",
+      pending: "En attente",
+      processing: "En traitement",
+      shipped: "Expédiées",
+      delivered: "Livrées",
+      cancelled: "Annulées",
+      total_amount: "Montant total",
+      shown: "Affichées",
+      shown_this_response: "Affichées ici",
+      recommended_count: "Recommandées",
+      critical_count: "Critiques",
+      high_count: "Priorité élevée",
+      medium_count: "Priorité moyenne",
+      low_count: "Priorité basse",
+      estimated_reorder_value: "Valeur estimée",
+      total_products: "Produits totaux",
+      estimate_only_count: "Estimations seules",
     };
-    return map[targetPage] || null;
-  }
 
-  // ── API publique ─────────────────────────────────────────────
-  return { mount, toggle, open, close };
-})();
+    return labels[key] || key.replaceAll("_", " ");
+  },
+
+  escapeHtml(value) {
+    const div = document.createElement("div");
+    div.textContent = value == null ? "" : String(value);
+    return div.innerHTML;
+  },
+
+  formatError(err) {
+    if (!err) return "Erreur inconnue.";
+
+    if (typeof err === "string") return err;
+
+    if (err.errors && typeof err.errors === "object") {
+      return Object.entries(err.errors)
+        .flatMap(([field, messages]) => {
+          const list = Array.isArray(messages) ? messages : [messages];
+          return list.map((msg) => `${field}: ${msg}`);
+        })
+        .join("\n");
+    }
+
+    if (err.fields && typeof err.fields === "object") {
+      return Object.entries(err.fields)
+        .flatMap(([field, messages]) => {
+          const list = Array.isArray(messages) ? messages : [messages];
+          return list.map((msg) => `${field}: ${msg}`);
+        })
+        .join("\n");
+    }
+
+    return err.message || err.error || "Impossible de contacter l'assistant.";
+  },
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  RabbitChatbot.init();
+});

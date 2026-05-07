@@ -1,113 +1,316 @@
 /* ============================================================
    auth.js — Rabbit B2B MRO Platform
-   Gestion de session. Le backend utilise les cookies PHP.
-   Tout doit passer par credentials: "include".
+   Depends on config.js
+   Backend role: "owner" | "client" | "fournisseur"
    ============================================================ */
 
-let _currentUser = null;
+const ROLE_PAGES = {
+  owner: "owner.html",
+  admin: "owner.html",
+  client: "client.html",
+  fournisseur: "supplier.html",
+  supplier: "supplier.html",
+};
 
-// ── Récupère l'utilisateur courant ─────────────────────────────
-async function getCurrentUser() {
-  if (_currentUser) return _currentUser;
+const PAGE_ROLES = {
+  "owner.html": ["owner", "admin"],
+  "client.html": ["client"],
+  "supplier.html": ["fournisseur", "supplier"],
+};
 
-  const stored = localStorage.getItem("rabbit_user");
+function extractUserFromResponse(response) {
+  const payload = response?.data ?? response;
+  return payload?.user ?? payload;
+}
 
-  if (stored) {
-    try {
-      _currentUser = JSON.parse(stored);
-      return _currentUser;
-    } catch {
-      localStorage.removeItem("rabbit_user");
-    }
+async function login() {
+  const emailEl = document.getElementById("login-email");
+  const passwordEl = document.getElementById("login-password");
+  const btnEl = document.getElementById("do-login");
+  const errEl = document.getElementById("login-error");
+
+  if (!emailEl || !passwordEl) return;
+
+  const email = emailEl.value.trim();
+  const password = passwordEl.value;
+
+  if (!email || !password) {
+    showLoginError("Veuillez renseigner votre email et mot de passe.");
+    return;
+  }
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = "Connexion…";
+  }
+
+  if (errEl) {
+    errEl.textContent = "";
+    errEl.style.display = "none";
   }
 
   try {
-    const data = await apiFetchJson("/user");
-    _currentUser = unwrap(data);
-
-    if (_currentUser) {
-      localStorage.setItem("rabbit_user", JSON.stringify(_currentUser));
-    }
-
-    return _currentUser;
-  } catch {
-    return null;
-  }
-}
-
-// ── Vérifie l'auth et redirige si nécessaire ──────────────────
-// allowedRoles: string | string[] | null (null = tout rôle authentifié)
-async function checkAuth(allowedRoles = null) {
-  const user = await getCurrentUser();
-
-  if (!user) {
-    window.location.href = "../login.html";
-    return null;
-  }
-
-  if (allowedRoles) {
-    const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
-    const userRole = user.role === "fournisseur" ? "supplier" : user.role;
-    const normalised = roles.map(r => r === "fournisseur" ? "supplier" : r);
-
-    if (!normalised.includes(userRole)) {
-      window.location.href = roleRedirectUrl(userRole);
-      return null;
-    }
-  }
-
-  return user;
-}
-
-// ── Redirige selon le rôle ─────────────────────────────────────
-  function roleRedirectUrl(role) {
-  const map = {
-    owner: "pages/owner.html",
-    client: "pages/client.html",
-    supplier: "pages/supplier.html",
-    fournisseur: "pages/supplier.html",
-  };
-
-  return map[role] || "../login.html";
-}
-
-// ── Login ──────────────────────────────────────────────────────
-async function login(email, password) {
-  const data = await apiFetchJson("/login", {
+    const loginRes = await fetch(apiUrl("/login"), {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    },
+    body: JSON.stringify({
+      email: email,
+      password: password,
+    }),
   });
+    const data = await loginRes.json().catch(() => ({}));
 
-  const user = unwrap(data)?.user || unwrap(data);
+    if (!loginRes.ok || data.error) {
+      throw data;
+    }
 
-  if (user) {
-    _currentUser = user;
-    localStorage.setItem("rabbit_user", JSON.stringify(user));
-    return user;
+    const user = extractUserFromResponse(data);
+    const role = user?.role;
+
+    console.log("LOGIN RESPONSE:", data);
+    console.log("EXTRACTED USER:", user);
+    console.log("EXTRACTED ROLE:", role);
+
+    if (!role) {
+      throw { error: "Rôle manquant dans la réponse serveur." };
+    }
+
+    const dest = ROLE_PAGES[role];
+
+    if (!dest) {
+      throw { error: `Rôle non reconnu : "${role}"` };
+    }
+
+    sessionStorage.setItem("rabbit_role", role);
+    sessionStorage.setItem("rabbit_user", JSON.stringify(user));
+
+    window.location.href = dest;
+  } catch (err) {
+    showLoginError(formatAuthError(err, "Erreur de connexion. Réessayez."));
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.textContent = "Se connecter →";
+    }
+  }
+}
+
+async function signup() {
+  const nameEl = document.getElementById("signup-name");
+  const emailEl = document.getElementById("signup-email");
+  const roleEl = document.getElementById("signup-role");
+  const passwordEl = document.getElementById("signup-password");
+  const confirmEl = document.getElementById("signup-confirm");
+  const btnEl = document.getElementById("do-signup");
+  const errEl = document.getElementById("signup-error");
+
+  if (!nameEl || !emailEl || !roleEl || !passwordEl || !confirmEl) return;
+
+  const name = nameEl.value.trim();
+  const email = emailEl.value.trim();
+  const role = roleEl.value;
+  const password = passwordEl.value;
+  const confirm = confirmEl.value;
+
+  if (!name || !email || !role || !password || !confirm) {
+    showSignupError("Veuillez remplir tous les champs.");
+    return;
   }
 
-  throw new Error(L.login.error);
-}
-// ── Logout ─────────────────────────────────────────────────────
-async function logout() {
-  _currentUser = null;
-  localStorage.removeItem("rabbit_user");
+  if (password !== confirm) {
+    showSignupError("Les mots de passe ne correspondent pas.");
+    return;
+  }
 
+  if (password.length < 6) {
+    showSignupError("Le mot de passe doit contenir au moins 6 caractères.");
+    return;
+  }
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = "Inscription…";
+  }
+
+  if (errEl) {
+    errEl.textContent = "";
+    errEl.style.display = "none";
+  }
+
+  try {
+    const formBody = new FormData();
+    formBody.append("name", name);
+    formBody.append("email", email);
+    formBody.append("role", role);
+    formBody.append("password", password);
+
+    const signupRes = await fetch(apiUrl("/register"), {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+      body: formBody,
+    });
+
+    const data = await signupRes.json().catch(() => ({}));
+
+    if (!signupRes.ok || data.error) {
+      throw data;
+    }
+
+    showToast("Compte créé avec succès ! Connectez-vous.", "success");
+    window.location.href = "login.html";
+  } catch (err) {
+    showSignupError(formatAuthError(err, "Erreur lors de l'inscription. Réessayez."));
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.textContent = "Créer mon compte →";
+    }
+  }
+}
+
+async function logout() {
   try {
     await apiFetchJson("/logout", { method: "POST" });
-  } catch {}
+  } catch (_) {}
 
-  window.location.href = "../login.html";
+  sessionStorage.clear();
+  window.location.href = "login.html";
+}
+async function checkAuth(expectedRole = null) {
+  try {
+    // Try backend session check first, if /me exists later.
+    const data = await apiFetchJson("/me");
+
+    const user = extractUserFromResponse(data);
+    const role = user?.role;
+
+    if (!role) {
+      redirectToLogin();
+      return null;
+    }
+
+    if (expectedRole) {
+      const expectedPage = ROLE_PAGES[expectedRole];
+      const allowed = PAGE_ROLES[expectedPage] || [expectedRole];
+
+      if (!allowed.includes(role)) {
+        window.location.href = ROLE_PAGES[role] || "login.html";
+        return null;
+      }
+    }
+
+    sessionStorage.setItem("rabbit_role", role);
+    sessionStorage.setItem("rabbit_user", JSON.stringify(user));
+
+    return user;
+
+  } catch (err) {
+    console.warn("/me unavailable, using sessionStorage fallback:", err);
+
+    const storedUser = getCurrentUser();
+    const storedRole = getCurrentRole() || storedUser?.role;
+
+    if (!storedUser || !storedRole) {
+      redirectToLogin();
+      return null;
+    }
+
+    if (expectedRole) {
+      const expectedPage = ROLE_PAGES[expectedRole];
+      const allowed = PAGE_ROLES[expectedPage] || [expectedRole];
+
+      if (!allowed.includes(storedRole)) {
+        window.location.href = ROLE_PAGES[storedRole] || "login.html";
+        return null;
+      }
+    }
+
+    return storedUser;
+  }
 }
 
-// ── Seed user display ──────────────────────────────────────────
-function seedUserDisplay(user) {
-  if (!user) return;
-  const initials = (user.name || "RB").slice(0, 2).toUpperCase();
-  const roleLabel = L.roles[user.role] || user.role;
-
-  document.querySelectorAll("[data-user-initials]").forEach(el => el.textContent = initials);
-  document.querySelectorAll("[data-user-name]").forEach(el => el.textContent = user.name || "");
-  document.querySelectorAll("[data-user-role]").forEach(el => el.textContent = roleLabel);
-  document.querySelectorAll("[data-user-company]").forEach(el => el.textContent = user.company_name || "");
+function showSignupError(msg) {
+  const el = document.getElementById("signup-error");
+  if (el) {
+    el.textContent = msg;
+    el.style.display = "block";
+  }
 }
+
+function showLoginError(msg) {
+  const el = document.getElementById("login-error");
+  if (el) {
+    el.textContent = msg;
+    el.style.display = "block";
+  }
+}
+
+function formatAuthError(err, fallback) {
+  if (!err) return fallback;
+
+  if (typeof err === "string") return err;
+
+  if (err.fields && typeof err.fields === "object") {
+    return Object.entries(err.fields)
+      .flatMap(([field, messages]) => {
+        const list = Array.isArray(messages) ? messages : [messages];
+        return list.map((msg) => `${field}: ${msg}`);
+      })
+      .join("\n");
+  }
+
+  return err.message || err.error || fallback;
+}
+
+function redirectToLogin() {
+  try {
+    sessionStorage.clear();
+  } catch (_) {}
+
+  window.location.href = "login.html";
+}
+
+function getCurrentUser() {
+  try {
+    return JSON.parse(sessionStorage.getItem("rabbit_user")) || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function getCurrentRole() {
+  return sessionStorage.getItem("rabbit_role") || null;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const loginBtn = document.getElementById("do-login");
+  if (loginBtn) {
+    loginBtn.addEventListener("click", login);
+  }
+
+  const loginPwd = document.getElementById("login-password");
+  if (loginPwd) {
+    loginPwd.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") login();
+    });
+  }
+
+  const signupBtn = document.getElementById("do-signup");
+  if (signupBtn) {
+    signupBtn.addEventListener("click", signup);
+  }
+
+  const signupPwd = document.getElementById("signup-confirm");
+  if (signupPwd) {
+    signupPwd.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") signup();
+    });
+  }
+});

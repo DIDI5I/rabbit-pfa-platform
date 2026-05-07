@@ -1,70 +1,87 @@
 /* ============================================================
    owner.js — Rabbit B2B MRO Platform — Dashboard Administration
-   Dépend de config.js + auth.js
-   Corrections handoff :
-   - apiFetchJson retourne data directement → plus besoin de parseJSON()
-   - unwrap() pour { message, data }
-   - /inventory et /inventory/alerts (pas /products/alerts)
-   - /stock/{componentId}/movements (pas /stock/movements global)
-   - RFQ : quantity_requested, lead_time_days (pas quantity/quoted_delay)
-   - Rôle : "fournisseur" (géré dans auth.js)
-   - Nouveau : purchase lots, orders (vues préparées)
+   Version optimisée — Utilise les modules partagés
+   Dépend de config.js + auth.js + utils.js
    ============================================================ */
 
-let allProducts     = [], allRelations = [], allRFQs       = [];
-let allMovements    = [], allSuppliers = [], allAlerts      = [];
-let allInventory    = [], allLots      = [];
-let currentEditId   = null;
+let allProducts = [], allRelations = [], allRFQs = [];
+let allMovements = [], allSuppliers = [], allAlerts = [];
+let allInventory = [], allLots = [];
+let currentEditId = null;
 
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
   const user = await checkAuth("owner");
   if (!user) return;
-  const initials = (user.name || "AD").slice(0, 2).toUpperCase();
-  setEl("topbar-avatar", initials); setEl("sidebar-avatar", initials);
-  if (user.name) setEl("sidebar-username", user.name);
 
-  await Promise.all([
+  const initials = getInitials(user.name || "AD", 2);
+
+  setEl("topbar-avatar", initials);
+  setEl("sidebar-avatar", initials);
+
+  if (user.name) {
+    setEl("sidebar-username", user.name);
+  }
+
+  await Promise.allSettled([
     loadProducts(),
-    loadInventory(),    // /inventory — source principale stock
-    loadAlerts(),       // /inventory/alerts
+    loadInventory(),
+    loadAlerts(),
     loadRFQs(),
     loadSuppliers(),
     loadRelations(),
     loadNotifications(),
     loadOrders(),
   ]);
-  updateKPIs();
-  renderDashboardWidgets();
-  renderStockIntelligencePlaceholder(); // affiche le bouton "Charger l'analyse"
-});
 
+  updateKPIs();
+  renderAnalyticsDashboard();
+  renderStockIntelligencePlaceholder();
+});
 // ── Navigation ────────────────────────────────────────────────
 function showView(name) {
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
   document.getElementById(`view-${name}`)?.classList.add("active");
+
   const titles = {
-    dashboard:"Tableau de bord",    products:"Produits",        relations:"Relations produit",
-    rfqs:"Demandes de devis",       alerts:"Alertes stock",     inventory:"Inventaire",
-    movements:"Mouvements",         suppliers:"Fournisseurs",   lots:"Lots d'achat",
-    notifications:"Notifications",  orders:"Commandes",
-    intelligence:"Stock Intelligence", promotions:"Promotions", reviews:"Avis clients",
+    dashboard: "Tableau de bord",
+    products: "Produits",
+    relations: "Relations produit",
+    rfqs: "Demandes de devis",
+    alerts: "Alertes stock",
+    inventory: "Inventaire",
+    movements: "Mouvements",
+    suppliers: "Fournisseurs",
+    lots: "Lots d'achat",
+    notifications: "Notifications",
+    orders: "Commandes",
+    intelligence: "Stock Intelligence",
+    promotions: "Promotions",
+    reviews: "Avis clients",
   };
+
   setEl("topbar-title", titles[name] || name);
+
   const viewHandlers = {
-    products:      renderProducts,
-    relations:     renderRelations,
-    rfqs:          renderRFQs,
-    alerts:        renderAlerts,
-    inventory:     renderInventory,
-    suppliers:     renderSuppliers,
-    lots:          renderLots,
+    dashboard: renderAnalyticsDashboard,
+    products: renderProducts,
+    relations: renderRelations,
+    rfqs: renderRFQs,
+    alerts: renderAlerts,
+    inventory: renderInventory,
+    movements: renderMovements,
+    suppliers: renderSuppliers,
+    lots: renderLots,
     notifications: renderNotifications,
-    orders:        renderOrders,
-    intelligence:  () => { renderStockIntelligencePlaceholder(); loadStockIntelligence(); },
-    promotions:    () => loadPromotions(),
-    reviews:       () => loadReviews("pending"),
+    orders: renderOrders,
+    intelligence: () => {
+      renderStockIntelligencePlaceholder();
+      loadStockIntelligence();
+    },
+    promotions: () => loadPromotions(),
+    reviews: () => loadReviews("pending"),
   };
+
   viewHandlers[name]?.();
 }
 
@@ -80,6 +97,29 @@ function updateKPIs() {
   setBadge("alert-badge", allAlerts.length);
   const dot = document.getElementById("notif-dot");
   if (dot) dot.style.display = (allAlerts.length > 0 || pending > 0) ? "block" : "none";
+}
+
+
+function renderAnalyticsDashboard() {
+  const el = document.getElementById("view-dashboard");
+  if (!el) return;
+
+  if (window.OwnerOverviewDashboard && typeof window.OwnerOverviewDashboard.render === "function") {
+    window.OwnerOverviewDashboard.render(el);
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="page-header">
+      <h1>Tableau de bord</h1>
+      <p>Vue globale du stock, analyse ABC, performance produit et prévision.</p>
+    </div>
+
+    <div class="empty-state">
+      <i class="fas fa-chart-line"></i>
+      <p>Module dashboard avancé non encore chargé.</p>
+    </div>
+  `;
 }
 
 function renderDashboardWidgets() {
@@ -386,14 +426,18 @@ function renderMovementsTable(tbodyId, list) {
 // RELATIONS PRODUIT
 // RAPPEL : PATCH/DELETE utilisent r.id (dependencies.id), PAS child_id
 // ══════════════════════════════════════════════════════════════
-let allRelations = [];
+
 
 async function loadRelations() {
-  // Route /product-relations n'existe pas en backend.
-  // Les relations se chargent par produit via /products/{id}/dependencies.
-  // Cette fonction initialise le tableau vide ; showProductRelations() charge par produit.
-  allRelations = [];
-  renderRelations();
+  try {
+    // Route /product-relations n'existe pas en backend.
+    // Les relations se chargent par produit via /products/{id}/dependencies.
+    // Cette fonction initialise le tableau vide ; showProductRelations() charge par produit.
+    allRelations = [];
+    renderRelations();
+  } catch (err) {
+    showToast("Erreur chargement relations: " + formatApiError(err), "error");
+  }
 }
 
 async function showProductRelations(productId, productName) {
@@ -670,9 +714,8 @@ function emptyRow(cols, icon, text) {
     <div style="font-size:28px;margin-bottom:8px">${icon}</div><div style="font-size:13px">${text}</div></td></tr>`;
 }
 
-function setEl(id,val) { const e=document.getElementById(id); if(e) e.textContent=val; }
-function setVal(id,val){ const e=document.getElementById(id); if(e) e.value=val; }
-function setBadge(id,n){ const e=document.getElementById(id); if(!e)return; e.textContent=n; e.style.display=n>0?"flex":"none"; }
+// ── Fonctions utilitaires ────────────────────────────────────
+// (Supprimées - maintenant dans utils.js : setEl, getEl, esc, formatDate, etc.)
 
 // ══════════════════════════════════════════════════════════════
 // NOTIFICATIONS — owner voit toutes les notifications

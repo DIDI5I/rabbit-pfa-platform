@@ -1,9 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<link rel="stylesheet" href="css/variables.css">
-<link rel="stylesheet" href="css/base.css">
-<link rel="stylesheet" href="css/chatbot.css">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rabbit — Portail Acheteur</title>
@@ -107,28 +104,28 @@
     .catalogue-empty i{font-size:36px;opacity:.3}
 
     .chat-widget{display:none!important}
-    
   </style>
 </head>
 <body>
 <div class="dash-layout">
 
-
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <div class="sidebar-brand-mark"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+      <div class="sidebar-brand-mark">
+        <img src="/logo.svg" alt="Rabbit Logo" width="17" height="17">
+      </div>
       <div><div class="sidebar-brand-name">Rabbit</div><div class="sidebar-brand-tag">Portail Acheteur</div></div>
     </div>
     <nav class="sidebar-nav">
       <div class="sidebar-section-label">Catalogue</div>
       <a class="sidebar-item active" onclick="clearSearch()"><i class="fas fa-store"></i>Catalogue MRO</a>
-      <a class="sidebar-item" style="pointer-events:none;opacity:.4"><i class="fas fa-heart"></i>Favoris</a>
+      <a class="sidebar-item disabled"><i class="fas fa-heart"></i>Favoris</a>
       <div class="sidebar-section-label">Mes achats</div>
       <a class="sidebar-item" onclick="toggleCart()">
         <i class="fas fa-shopping-cart"></i>Panier
         <span class="sidebar-badge" id="cart-sidebar-badge" style="display:none">0</span>
       </a>
-      <a class="sidebar-item" onclick="showClientView('orders')"><i class="fas fa-receipt"></i>Mes commandes</a>
+      <a class="sidebar-item" onclick="showClientOrdersPanel()"><i class="fas fa-receipt"></i>Mes commandes</a>
     </nav>
     <div class="sidebar-footer">
       <div class="sidebar-user">
@@ -146,7 +143,7 @@
         <i class="fas fa-search"></i>
         <input type="text" id="topbar-search" placeholder="Référence, SKU, produit…" oninput="searchCatalogue(this.value)">
       </div>
-      <div class="topbar-notif" style="position:relative;padding:8px;cursor:pointer" onclick="showClientView('notifications')">
+      <div class="topbar-notif" style="position:relative;padding:8px;cursor:pointer" onclick="showClientNotifPanel()">
         <i class="fas fa-bell" style="font-size:16px;color:#64748b"></i>
         <div id="notif-dot" style="position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#ef4444;display:none"></div>
       </div>
@@ -224,13 +221,13 @@
 
 <!-- Mes commandes (panneau latéral) -->
 <!-- Notifications panel -->
-<div id="notif-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:498;display:none" onclick="closeClientView('notifications')"></div>
-<div id="notif-panel" style="position:fixed;top:0;right:0;width:400px;height:100vh;background:var(--surface);border-left:1px solid var(--border);z-index:499;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column">
+<div id="notif-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:498;display:none" onclick="closeClientNotifPanel()"></div>
+<div id="notif-panel" class="side-panel">
   <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
     <h3 style="font-weight:700;font-size:16px">Notifications</h3>
     <div style="display:flex;gap:8px">
       <button class="btn-sm" onclick="markAllClientNotifsRead()" style="font-size:11px"><i class="fas fa-check-double"></i> Tout lire</button>
-      <button style="background:none;border:none;cursor:pointer;font-size:18px;color:#94a3b8" onclick="closeClientView('notifications')"><i class="fas fa-xmark"></i></button>
+      <button style="background:none;border:none;cursor:pointer;font-size:18px;color:#94a3b8" onclick="closeClientNotifPanel()"><i class="fas fa-xmark"></i></button>
     </div>
   </div>
   <div style="flex:1;overflow-y:auto;padding:0 24px" id="client-notif-list">
@@ -238,11 +235,11 @@
   </div>
 </div>
 
-<div id="orders-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:498;display:none" onclick="closeClientView('orders')"></div>
-<div id="orders-panel" style="position:fixed;top:0;right:0;width:480px;height:100vh;background:var(--surface);border-left:1px solid var(--border);z-index:499;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column">
+<div id="orders-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:498;display:none" onclick="closeClientOrdersPanel()"></div>
+<div id="orders-panel" class="side-panel side-panel-wide">
   <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
     <h3 style="font-weight:700;font-size:16px">Mes commandes</h3>
-    <button style="background:none;border:none;cursor:pointer;font-size:18px;color:#94a3b8" onclick="closeClientView('orders')"><i class="fas fa-xmark"></i></button>
+    <button style="background:none;border:none;cursor:pointer;font-size:18px;color:#94a3b8" onclick="closeClientOrdersPanel()"><i class="fas fa-xmark"></i></button>
   </div>
   <div style="flex:1;overflow-y:auto;padding:16px 24px">
     <div style="margin-bottom:12px;font-size:13px;color:#94a3b8" id="client-orders-sub">—</div>
@@ -260,36 +257,11 @@
   </div>
 </div>
 
-<script>
-// Ouvrir/fermer les panneaux secondaires client
-function showClientView(name) {
-  if (name === 'orders') {
-    document.getElementById('orders-overlay').style.display = 'block';
-    document.getElementById('orders-panel').style.transform = 'translateX(0)';
-    loadClientOrders();
-  }
-  if (name === 'notifications') {
-    document.getElementById('notif-overlay').style.display = 'block';
-    document.getElementById('notif-panel').style.transform = 'translateX(0)';
-    loadAndRenderClientNotifications();
-  }
-}
-function closeClientView(name) {
-  if (name === 'orders') {
-    document.getElementById('orders-overlay').style.display = 'none';
-    document.getElementById('orders-panel').style.transform = 'translateX(100%)';
-  }
-  if (name === 'notifications') {
-    document.getElementById('notif-overlay').style.display = 'none';
-    document.getElementById('notif-panel').style.transform = 'translateX(100%)';
-  }
-}
-</script>
+<!-- Panel functions now in client.js -->
 
 <script src="js/config.js"></script>
+<script src="js/utils.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/client.js"></script>
-<script src="js/config.js"></script>
-<script src="js/chatbot.js"></script>
 </body>
 </html>

@@ -1,0 +1,24 @@
+{
+  "name": "rabbit-b2b-mro",
+  "version": "1.0.0",
+  "description": "Plateforme B2B MRO pour gestion des stocks et achats industriels",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "terser": "^5.47.1",
+    "vite": "^5.0.0",
+    "vite-plugin-imagemin": "^0.6.1"
+  },
+  "keywords": [
+    "B2B",
+    "MRO",
+    "gestion-stocks",
+    "plateforme-industrielle"
+  ],
+  "author": "Rabbit Team",
+  "license": "MIT"
+}

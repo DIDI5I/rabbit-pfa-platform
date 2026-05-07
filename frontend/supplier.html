@@ -1,9 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<link rel="stylesheet" href="css/variables.css">
-<link rel="stylesheet" href="css/base.css">
-<link rel="stylesheet" href="css/chatbot.css">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rabbit — Portail Fournisseur</title>
@@ -71,13 +68,14 @@
     .chat-widget{display:none!important}
   </style>
 </head>
-
 <body>
 <div class="dash-layout">
 
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <div class="sidebar-brand-mark"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+      <div class="sidebar-brand-mark">
+        <img src="/logo.svg" alt="Rabbit Logo" width="17" height="17">
+      </div>
       <div><div class="sidebar-brand-name">Rabbit</div><div class="sidebar-brand-tag">Portail Fournisseur</div></div>
     </div>
     <nav class="sidebar-nav">
@@ -87,9 +85,9 @@
       <a class="sidebar-item" onclick="filterByStatus('quoted')"><i class="fas fa-paper-plane"></i>Devis envoyés<span class="sidebar-badge" id="sb-quoted" style="display:none">0</span></a>
       <a class="sidebar-item" onclick="filterByStatus('accepted')"><i class="fas fa-check-double"></i>Acceptées<span class="sidebar-badge" id="sb-accepted" style="display:none">0</span></a>
       <div class="sidebar-section-label">Mon profil</div>
-      <a class="sidebar-item" style="pointer-events:none;opacity:.4"><i class="fas fa-box-open"></i>Mon catalogue</a>
-      <a class="sidebar-item" style="pointer-events:none;opacity:.4"><i class="fas fa-star"></i>Performance</a>
-      <a class="sidebar-item" style="pointer-events:none;opacity:.4"><i class="fas fa-gear"></i>Paramètres</a>
+      <a class="sidebar-item disabled"><i class="fas fa-box-open"></i>Mon catalogue</a>
+      <a class="sidebar-item disabled"><i class="fas fa-star"></i>Performance</a>
+      <a class="sidebar-item disabled"><i class="fas fa-gear"></i>Paramètres</a>
     </nav>
     <div class="sidebar-footer">
       <div class="sidebar-user">
@@ -103,7 +101,7 @@
   <main class="dash-main">
     <div class="topbar">
       <div class="topbar-title">Demandes de devis</div>
-      <div class="topbar-notif" style="position:relative;padding:8px;cursor:pointer" onclick="openSupplierNotifications()">
+      <div class="topbar-notif" style="position:relative;padding:8px;cursor:pointer" onclick="openSupplierNotifPanel()">
         <i class="fas fa-bell" style="font-size:16px;color:#64748b"></i>
         <div id="notif-dot" style="position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#ef4444;display:none"></div>
       </div>
@@ -172,33 +170,22 @@
 </div>
 
 <!-- Notifications panel fournisseur -->
-<div id="supplier-notif-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:498;display:none" onclick="closeSupplierNotifications()"></div>
-<div id="supplier-notif-panel" style="position:fixed;top:0;right:0;width:400px;height:100vh;background:var(--surface);border-left:1px solid var(--border);z-index:499;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column">
+<div id="supplier-notif-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:498;display:none" onclick="closeSupplierNotifPanel()"></div>
+<div id="supplier-notif-panel" class="side-panel">
   <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
     <h3 style="font-weight:700;font-size:16px">Mes notifications</h3>
-    <button style="background:none;border:none;cursor:pointer;font-size:18px;color:#94a3b8" onclick="closeSupplierNotifications()"><i class="fas fa-xmark"></i></button>
+    <button style="background:none;border:none;cursor:pointer;font-size:18px;color:#94a3b8" onclick="closeSupplierNotifPanel()"><i class="fas fa-xmark"></i></button>
   </div>
   <div style="flex:1;overflow-y:auto;padding:0 24px" id="supplier-notif-list">
     <div style="text-align:center;padding:40px 0;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i></div>
   </div>
 </div>
 
-<script>
-async function openSupplierNotifications() {
-  document.getElementById('supplier-notif-overlay').style.display = 'block';
-  document.getElementById('supplier-notif-panel').style.transform = 'translateX(0)';
-  await loadAndRenderSupplierNotifications();
-}
-function closeSupplierNotifications() {
-  document.getElementById('supplier-notif-overlay').style.display = 'none';
-  document.getElementById('supplier-notif-panel').style.transform = 'translateX(100%)';
-}
-</script>
+<!-- Panel functions now in supplier.js -->
 
 <script src="js/config.js"></script>
+<script src="js/utils.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/supplier.js"></script>
-<script src="js/config.js"></script>
-<script src="js/chatbot.js"></script>
 </body>
 </html>

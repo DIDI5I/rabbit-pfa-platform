@@ -1,18 +1,22 @@
 /* ============================================================
    config.js — Rabbit B2B MRO Platform
    Source de vérité : rabbit_frontend_api_handoff.md
-   IMPORTANT: Ne jamais modifier les fonctions de parsing.
-   Toute logique métier (unwrap, formatApiError, constantes)
-   est définie ici une seule fois.
    ============================================================ */
 
 const API_BASE_URL = "http://localhost:8888";
+const USE_MOCK_DATA = false;
 
-// ── apiFetchJson ──────────────────────────────────────────────
+function apiUrl(path) {
+  return `${API_BASE_URL.replace(/\/$/, "")}/${String(path).replace(/^\//, "")}`;
+}
+// ── apiFetchJson : retourne la réponse backend complète { message, data } ─
+// Utiliser unwrap() / unwrapItems() pour extraire les données.
 async function apiFetchJson(path, options = {}) {
   const { headers = {}, body, ...rest } = options;
+
   const isFormData = body instanceof FormData;
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+
+  const response = await fetch(apiUrl(path), {
     credentials: "include",
     headers: {
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
@@ -22,22 +26,31 @@ async function apiFetchJson(path, options = {}) {
     ...(body !== undefined ? { body } : {}),
     ...rest,
   });
+
   const data = await response.json().catch(() => null);
+
   if (!response.ok) throw data || { error: `Erreur ${response.status}` };
+
   return data;
 }
 
-// ── apiFetchFormData ──────────────────────────────────────────
+// ── apiFetchFormData : pour upload image, pas de Content-Type ─
 async function apiFetchFormData(path, formData, method = "POST") {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method, credentials: "include", body: formData,
+  const response = await fetch(apiUrl(path), {
+    method,
+    credentials: "include",
+    body: formData,
   });
+
   const data = await response.json().catch(() => null);
+
   if (!response.ok) throw data || { error: `Erreur ${response.status}` };
+
   return data;
 }
 
-// ── unwrap ────────────────────────────────────────────────────
+// ── unwrap : extrait .data de { message, data } ───────────────
+// Gère aussi les anciens endpoints qui retournent un tableau direct.
 function unwrap(response, fallback = null) {
   if (!response) return fallback;
   if (Object.prototype.hasOwnProperty.call(response, "data")) {
@@ -46,7 +59,7 @@ function unwrap(response, fallback = null) {
   return response;
 }
 
-// ── unwrapItems ───────────────────────────────────────────────
+// ── unwrapItems : extrait un tableau depuis une liste paginée ─
 function unwrapItems(response) {
   const data = unwrap(response, {});
   if (Array.isArray(data)) return data;
@@ -54,13 +67,7 @@ function unwrapItems(response) {
   return [];
 }
 
-// ── unwrapPagination ──────────────────────────────────────────
-function unwrapPagination(response) {
-  const data = unwrap(response, {});
-  return data.pagination || null;
-}
-
-// ── formatApiError ────────────────────────────────────────────
+// ── formatApiError : message lisible depuis erreur backend ────
 function formatApiError(err) {
   if (!err) return "Erreur inconnue.";
   if (err.fields && typeof err.fields === "object") {
@@ -79,29 +86,22 @@ function formatApiError(err) {
 function showToast(message, type = "error") {
   let c = document.getElementById("toast-container");
   if (!c) {
-    c = document.createElement("div");
-    c.id = "toast-container";
+    c = document.createElement("div"); c.id = "toast-container";
+    Object.assign(c.style, { position:"fixed", bottom:"24px", right:"24px", zIndex:"9999", display:"flex", flexDirection:"column", gap:"8px" });
     document.body.appendChild(c);
   }
+  const col = { error:["#fef2f2","#fecaca","#b91c1c"], success:["#f0fdf4","#bbf7d0","#15803d"], warn:["#fffbeb","#fde68a","#92400e"] }[type] || ["#fef2f2","#fecaca","#b91c1c"];
   const t = document.createElement("div");
-  t.className = `toast toast-${type}`;
-  t.textContent = message;
-  c.appendChild(t);
-  setTimeout(() => t.remove(), 4200);
-}
-
-// ── esc ───────────────────────────────────────────────────────
-function esc(str) {
-  if (str == null) return "";
-  return String(str)
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  Object.assign(t.style, { padding:"12px 16px", background:col[0], border:`1px solid ${col[1]}`, borderRadius:"10px", fontSize:"13px", color:col[2], fontWeight:"600", fontFamily:"Manrope,sans-serif", boxShadow:"0 4px 12px rgba(0,0,0,.08)", maxWidth:"340px" });
+  t.textContent = message; c.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
 }
 
 // ══════════════════════════════════════════════════════════════
-// CONSTANTES MÉTIER — alignées backend, ne pas modifier
+// CONSTANTES MÉTIER
 // ══════════════════════════════════════════════════════════════
 
+// Catégories composant — table backend : components
 const COMPONENT_CATEGORIES = {
   assembly:     "Assemblage",
   sub_assembly: "Sous-assemblage",
@@ -109,34 +109,39 @@ const COMPONENT_CATEGORIES = {
   raw_material: "Matière première",
 };
 
+// Statuts stock — retournés par /stock/{id} et /inventory
 const STOCK_STATUS = {
-  OK:           { label: "Disponible",       cls: "stock-ok"  },
-  LOW_STOCK:    { label: "Stock bas",        cls: "stock-low" },
-  OUT_OF_STOCK: { label: "Rupture de stock", cls: "stock-out" },
+  OK:           { label:"Disponible",       cls:"stock-ok"  },
+  LOW_STOCK:    { label:"Stock bas",        cls:"stock-low" },
+  OUT_OF_STOCK: { label:"Rupture de stock", cls:"stock-out" },
 };
 
+// Statuts RFQ — inclus "cancelled" (handoff section 4)
 const RFQ_STATUS = {
-  draft:     { label: "Brouillon",  cls: "badge-draft"    },
-  open:      { label: "Ouverte",    cls: "badge-open"     },
-  quoted:    { label: "Devis reçu", cls: "badge-quoted"   },
-  accepted:  { label: "Acceptée",   cls: "badge-accepted" },
-  rejected:  { label: "Rejetée",    cls: "badge-rejected" },
-  expired:   { label: "Expirée",    cls: "badge-expired"  },
-  cancelled: { label: "Annulée",    cls: "badge-expired"  },
+  draft:     { label:"Brouillon",  cls:"badge-draft"    },
+  open:      { label:"Ouverte",    cls:"badge-open"     },
+  quoted:    { label:"Devis reçu", cls:"badge-quoted"   },
+  accepted:  { label:"Acceptée",   cls:"badge-accepted" },
+  rejected:  { label:"Rejetée",    cls:"badge-rejected" },
+  expired:   { label:"Expirée",    cls:"badge-expired"  },
+  cancelled: { label:"Annulée",    cls:"badge-expired"  },
 };
 
+// Statuts lots d'achat
 const PURCHASE_LOT_STATUS = {
   draft:     "Brouillon",
   finalized: "Finalisé",
   cancelled: "Annulé",
 };
 
+// ── Disponibilité catalogue client (/catalog/products) ────────
 const AVAILABILITY_LABELS = {
   AVAILABLE:        "Disponible",
   LOW_AVAILABILITY: "Disponibilité limitée",
   OUT_OF_STOCK:     "Rupture de stock",
 };
 
+// ── Stock intelligence — priorité, confiance, modèles ─────────
 const PRIORITY_LABELS = {
   CRITICAL: "Critique",
   HIGH:     "Élevée",
@@ -157,18 +162,20 @@ const MODEL_LABELS = {
   threshold_only:               "Seuil uniquement",
   moving_average:               "Moyenne mobile",
   simple_exponential_smoothing: "Lissage exponentiel simple",
-  croston_sba:                  "Croston / SBA",
+  croston_sba:                  "Croston/SBA",
   regression_trend:             "Tendance linéaire",
   seasonal_index:               "Indice saisonnier",
 };
 
+// ── Statuts promotions (calculés côté backend) ────────────────
 const PROMOTION_STATUS_LABELS = {
-  ACTIVE:   "Active",
-  UPCOMING: "À venir",
-  EXPIRED:  "Expirée",
-  DISABLED: "Désactivée",
+  ACTIVE:    "Active",
+  UPCOMING:  "À venir",
+  EXPIRED:   "Expirée",
+  DISABLED:  "Désactivée",
 };
 
+// ── Types de relation produit (alignés avec backend /dependencies)
 const RELATION_TYPES = {
   technical_structure:    "Structure technique",
   replacement_part:       "Pièce de remplacement",
@@ -178,15 +185,17 @@ const RELATION_TYPES = {
   related_product:        "Produit associé",
 };
 
+// Labels sections recommandations (/products/{id}/recommendations)
 const RECOMMENDATION_SECTION_LABELS = {
-  explicit_relations:      "Relations explicites",
-  compatible_alternatives: "Alternatives compatibles",
-  accessories:             "Accessoires",
-  spare_parts:             "Pièces de rechange",
-  same_category:           "Même catégorie",
-  same_supplier:           "Même fournisseur",
+  explicit_relations:     "Relations explicites",
+  compatible_alternatives:"Alternatives compatibles",
+  accessories:            "Accessoires",
+  spare_parts:            "Pièces de rechange",
+  same_category:          "Même catégorie",
+  same_supplier:          "Même fournisseur",
 };
 
+// Statuts commandes
 const ORDER_STATUS = {
   pending:    { label: "En attente",    cls: "badge-draft"    },
   processing: { label: "En traitement", cls: "badge-open"     },
@@ -195,19 +204,21 @@ const ORDER_STATUS = {
   cancelled:  { label: "Annulée",       cls: "badge-rejected" },
 };
 
+// Types de notifications
 const NOTIFICATION_TYPE_LABELS = {
-  RFQ_ASSIGNED:                    "RFQ assignée",
-  RFQ_QUOTED:                      "Devis reçu",
-  RFQ_ACCEPTED_BY_OWNER:           "Devis accepté",
-  RFQ_REJECTED_BY_OWNER:           "Devis rejeté",
-  PURCHASE_LOT_NEEDS_FINALIZATION: "Lot d'achat à finaliser",
-  PURCHASE_LOT_FINALIZED:          "Lot d'achat finalisé",
-  LOW_STOCK_ALERT:                 "Stock faible",
-  OUT_OF_STOCK_ALERT:              "Rupture de stock",
-  ORDER_CREATED:                   "Nouvelle commande",
-  ORDER_STATUS_CHANGED:            "Statut de commande modifié",
+  RFQ_ASSIGNED:                   "RFQ assignée",
+  RFQ_QUOTED:                     "Devis reçu",
+  RFQ_ACCEPTED_BY_OWNER:          "Devis accepté",
+  RFQ_REJECTED_BY_OWNER:          "Devis rejeté",
+  PURCHASE_LOT_NEEDS_FINALIZATION:"Lot d'achat à finaliser",
+  PURCHASE_LOT_FINALIZED:         "Lot d'achat finalisé",
+  LOW_STOCK_ALERT:                "Stock faible",
+  OUT_OF_STOCK_ALERT:             "Rupture de stock",
+  ORDER_CREATED:                  "Nouvelle commande",
+  ORDER_STATUS_CHANGED:           "Statut de commande modifié",
 };
 
+// Raisons de mouvement de stock
 const MOVEMENT_REASONS = {
   INITIAL_STOCK:           "Stock initial",
   RFQ_ACCEPTED:            "RFQ acceptée",
@@ -219,17 +230,27 @@ const MOVEMENT_REASONS = {
   CANCELLED_ORDER_RESTORE: "Restauration après annulation de commande",
 };
 
-// ── Shared UI helpers ─────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// HELPERS UI PARTAGÉS
+// ══════════════════════════════════════════════════════════════
+
+function esc(str) {
+  if (str == null) return "";
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
 
 function categoryLabel(cat) {
   return COMPONENT_CATEGORIES[cat] || esc(cat) || "—";
 }
 
+// Badge stock depuis stock_status (/stock/{id} ou /inventory)
 function stockBadgeFromStatus(status) {
   const s = STOCK_STATUS[status] || STOCK_STATUS.OK;
-  return `<span class="stock-badge ${s.cls}"><i class="fas fa-circle" style="font-size:5px"></i>${s.label}</span>`;
+  return `<span class="stock-badge ${s.cls}"><i class="fas fa-circle" style="font-size:6px"></i>${s.label}</span>`;
 }
 
+// Badge stock calculé localement (fallback depuis liste produits)
+// Règle spec : const realStock = product.current_stock ?? product.stock_qty ?? 0
 function stockBadgeFromProduct(p) {
   const qty = p.current_stock ?? p.stock_qty ?? null;
   const thr = p.low_stock_threshold ?? 0;
@@ -239,32 +260,14 @@ function stockBadgeFromProduct(p) {
   return stockBadgeFromStatus(key);
 }
 
+function phantomBadge() {
+  return `<span style="display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#f1f5f9;color:#64748b;margin-left:6px">fantôme</span>`;
+}
+
 function rfqBadge(status) {
   const s = RFQ_STATUS[status];
   if (!s) return `<span class="badge badge-draft">${esc(status)}</span>`;
   return `<span class="badge ${s.cls}">${s.label}</span>`;
-}
-
-function priorityBadge(priority) {
-  const label = PRIORITY_LABELS[priority] || priority || "—";
-  return `<span class="priority-badge priority-${priority}">${label}</span>`;
-}
-
-function confidenceBadge(confidence) {
-  const label = CONFIDENCE_LABELS[confidence] || confidence || "—";
-  return `<span class="confidence-badge confidence-${confidence}">${label}</span>`;
-}
-
-function stockGauge(qty, thr) {
-  if (qty == null) return "";
-  const max = Math.max(qty * 1.5, thr * 3, 10);
-  const pct = Math.min(100, Math.round((qty / max) * 100));
-  const col = qty <= 0 ? "var(--red)" : qty <= thr ? "var(--amber)" : "var(--green)";
-  return `<div class="stock-gauge"><div class="stock-gauge-fill" style="width:${pct}%;background:${col}"></div></div>`;
-}
-
-function phantomBadge() {
-  return `<span style="display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;background:var(--surface-2);color:var(--text-3);margin-left:5px">fantôme</span>`;
 }
 
 function formatMAD(val) {
@@ -275,41 +278,4 @@ function formatMAD(val) {
 function formatDate(str) {
   if (!str) return "—";
   return new Date(str).toLocaleDateString("fr-FR");
-}
-
-function setEl(id, val)  { const e = document.getElementById(id); if (e) e.textContent = val; }
-function setVal(id, val) { const e = document.getElementById(id); if (e) e.value = val; }
-function setBadge(id, n) {
-  const e = document.getElementById(id);
-  if (!e) return;
-  e.textContent = n;
-  e.style.display = n > 0 ? "flex" : "none";
-}
-
-function emptyRow(cols, icon, text) {
-  return `<tr><td colspan="${cols}">
-    <div class="empty-state">
-      <i class="fas ${icon}"></i>
-      <p>${text}</p>
-    </div>
-  </td></tr>`;
-}
-
-// ── Navigation bubble (chatbot contract) ──────────────────────
-function showNavBubble(previousPageLink, bubbleText, durationMs = 4000) {
-  const existing = document.getElementById("nav-bubble");
-  if (existing) existing.remove();
-
-  const bubble = document.createElement("a");
-  bubble.id = "nav-bubble";
-  bubble.className = "nav-bubble";
-  bubble.href = previousPageLink || "#";
-  bubble.innerHTML = `<i class="fas fa-arrow-left"></i> ${esc(bubbleText || "Retour à la page précédente")}`;
-  document.body.appendChild(bubble);
-
-  setTimeout(() => {
-    bubble.style.transition = "opacity .3s";
-    bubble.style.opacity = "0";
-    setTimeout(() => bubble.remove(), 320);
-  }, durationMs);
 }

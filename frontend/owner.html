@@ -1,4 +1,504 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rabbit — Administration</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/owner_analytics.css">
+  <link rel="stylesheet" href="css/chatbot.css">
+  <style>
+    .view{display:none}.view.active{display:block}
+    .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.03em}
+    .badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.6}
+    .badge-draft{background:#f1f5f9;color:#64748b}.badge-open{background:#dbeafe;color:#1d4ed8}
+    .badge-quoted{background:#fed7aa;color:#c2410c}.badge-accepted{background:#dcfce7;color:#15803d}
+    .badge-rejected{background:#fee2e2;color:#b91c1c}.badge-expired,.badge-cancelled{background:#f1f5f9;color:#94a3b8}
+    .badge-out{background:#fee2e2;color:#b91c1c}.badge-low{background:#fef9c3;color:#92400e}
+    .stock-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+    .stock-ok{background:#dcfce7;color:#15803d}.stock-low{background:#fef9c3;color:#92400e}.stock-out{background:#fee2e2;color:#b91c1c}
+    .rel-pill{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;background:#ede9fe;color:#6d28d9}
+    .mov-in{color:#16a34a;font-weight:700}.mov-out{color:#dc2626;font-weight:700}
+    .alert-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+    .alert-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 20px;display:flex;align-items:flex-start;gap:16px}
+    .alert-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+    .alert-icon.out{background:#fee2e2;color:#dc2626}.alert-icon.low{background:#fef9c3;color:#d97706}
+    .alert-body{flex:1}.alert-product{font-weight:700;font-size:13px}.alert-detail{font-size:12px;color:#94a3b8;margin-top:2px}
+    .supplier-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+    .supplier-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;transition:box-shadow .2s}
+    .supplier-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.06)}
+    .supplier-avatar{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;margin-bottom:12px}
+    .supplier-name{font-weight:700;font-size:14px}.supplier-meta{font-size:12px;color:#94a3b8;margin-top:3px}
+    .supplier-stats{display:flex;gap:16px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+    .supplier-stat-val{font-weight:700;font-size:15px}.supplier-stat-lbl{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em}
+    .filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+    .filter-search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0 14px;flex:1;min-width:200px}
+    .filter-search input{border:none;background:none;outline:none;font-family:Manrope,sans-serif;font-size:13px;padding:10px 0;width:100%}
+    .filter-search i{color:#94a3b8;font-size:13px}
+    .filter-select{padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-family:Manrope,sans-serif;font-size:13px;cursor:pointer}
+    .chat-widget{display:none!important}
+    tbody tr:not(.empty-row):hover td{background:#f8fafc}
+  </style>
+</head>
+<body>
+<div class="dash-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-mark">
+        <img src="/logo.svg" alt="Rabbit Logo" width="17" height="17">
+      </div>
+      <div><div class="sidebar-brand-name">Rabbit</div><div class="sidebar-brand-tag">Administration</div></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Principal</div>
+      <a class="sidebar-item active" onclick="showView('dashboard')"><i class="fas fa-chart-line"></i>Tableau de bord</a>
+      <a class="sidebar-item" onclick="showView('products')"><i class="fas fa-box"></i>Produits</a>
+      <a class="sidebar-item" onclick="showView('relations')"><i class="fas fa-diagram-project"></i>Relations produit</a>
+      <a class="sidebar-item" onclick="showView('rfqs')">
+        <i class="fas fa-file-invoice"></i>Demandes de devis
+        <span class="sidebar-badge" id="rfq-badge" style="display:none">0</span>
+      </a>
+      <div class="sidebar-section-label">Inventaire</div>
+      <a class="sidebar-item" onclick="showView('inventory')"><i class="fas fa-warehouse"></i>Inventaire</a>
+      <a class="sidebar-item" onclick="showView('alerts')">
+        <i class="fas fa-bell"></i>Alertes stock
+        <span class="sidebar-badge alert" id="alert-badge" style="display:none">0</span>
+      </a>
+      <a class="sidebar-item" onclick="showView('movements')"><i class="fas fa-arrows-up-down"></i>Mouvements</a>
+      <a class="sidebar-item" onclick="showView('lots')"><i class="fas fa-pallet"></i>Lots d'achat</a>
+      <div class="sidebar-section-label">Intelligence</div>
+      <a class="sidebar-item" onclick="showView('intelligence')"><i class="fas fa-brain"></i>Stock Intelligence</a>
+
+      <div class="sidebar-section-label">Activité</div>
+      <a class="sidebar-item" onclick="showView('orders')"><i class="fas fa-receipt"></i>Commandes</a>
+      <a class="sidebar-item" onclick="showView('promotions')"><i class="fas fa-tag"></i>Promotions</a>
+      <a class="sidebar-item" onclick="showView('reviews')"><i class="fas fa-star"></i>Avis clients</a>
+      <a class="sidebar-item" onclick="showView('notifications')">
+        <i class="fas fa-bell"></i>Notifications
+        <span class="sidebar-badge" id="notif-badge" style="display:none">0</span>
+      </a>
+
+      <div class="sidebar-section-label">Partenaires</div>
+      <a class="sidebar-item" onclick="showView('suppliers')"><i class="fas fa-truck"></i>Fournisseurs</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebar-avatar">AD</div>
+        <div><div class="sidebar-user-name" id="sidebar-username">Administrateur</div><div class="sidebar-user-role">Owner</div></div>
+        <button class="sidebar-logout" onclick="logout()" title="Déconnexion"><i class="fas fa-right-from-bracket"></i></button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="dash-main">
+    <div class="topbar">
+      <div class="topbar-title" id="topbar-title">Tableau de bord</div>
+      <div class="topbar-search"><i class="fas fa-search"></i><input type="text" placeholder="Rechercher…"></div>
+      <div class="topbar-notif"><i class="fas fa-bell"></i><div class="notif-dot" id="notif-dot" style="display:none"></div></div>
+      <div class="topbar-avatar" id="topbar-avatar">AD</div>
+    </div>
+
+    <div class="dash-content">
+
+      <!-- DASHBOARD -->
+      <div class="view active" id="view-dashboard">
+        <div class="page-header"><h1>Vue d'ensemble</h1><p>État de la plateforme Rabbit</p></div>
+        <div class="kpi-grid">
+          <div class="kpi-card fade-up"><div class="kpi-card-top"><div class="kpi-icon blue"><i class="fas fa-box"></i></div></div><div class="kpi-value" id="kpi-products">—</div><div class="kpi-label">Produits actifs</div><div class="kpi-mini-bar blue"></div></div>
+          <div class="kpi-card fade-up delay-1"><div class="kpi-card-top"><div class="kpi-icon red"><i class="fas fa-triangle-exclamation"></i></div></div><div class="kpi-value" id="kpi-alerts">—</div><div class="kpi-label">Alertes stock</div><div class="kpi-mini-bar red"></div></div>
+          <div class="kpi-card fade-up delay-2"><div class="kpi-card-top"><div class="kpi-icon orange"><i class="fas fa-file-invoice"></i></div></div><div class="kpi-value" id="kpi-rfqs">—</div><div class="kpi-label">RFQs en attente</div><div class="kpi-mini-bar orange"></div></div>
+          <div class="kpi-card fade-up delay-3"><div class="kpi-card-top"><div class="kpi-icon green"><i class="fas fa-truck"></i></div></div><div class="kpi-value" id="kpi-suppliers">—</div><div class="kpi-label">Fournisseurs</div><div class="kpi-mini-bar green"></div></div>
+        </div>
+        <div class="charts-row" style="grid-template-columns:1fr 1fr">
+          <div class="chart-card">
+            <div class="chart-card-header"><div><div class="chart-card-title">Alertes stock</div><div class="chart-card-sub">Produits sous seuil</div></div><button class="btn-sm" onclick="showView('alerts')">Voir tout</button></div>
+            <div id="dash-alerts-list" style="margin-top:4px"><div class="empty-state"><i class="fas fa-spinner fa-spin"></i></div></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header"><div><div class="chart-card-title">RFQs ouvertes</div><div class="chart-card-sub">En cours</div></div><button class="btn-sm" onclick="showView('rfqs')">Voir tout</button></div>
+            <div id="dash-rfqs-list" style="margin-top:4px"><div class="empty-state"><i class="fas fa-spinner fa-spin"></i></div></div>
+          </div>
+        </div>
+        <div class="table-card" style="margin-top:24px">
+          <div class="table-card-header"><div><div class="table-card-title">Mouvements récents</div><div class="table-card-sub">10 dernières entrées / sorties</div></div><button class="btn-sm" onclick="showView('movements')">Voir tout</button></div>
+          <table><thead><tr><th>Produit</th><th>Direction</th><th>Qté</th><th>Raison</th><th>Référence</th><th>Date</th></tr></thead>
+          <tbody id="dash-movements-tbody"><tr><td colspan="6" style="text-align:center;padding:20px 0;color:#94a3b8">⏳</td></tr></tbody></table>
+        </div>
+      </div>
+
+      <!-- PRODUITS -->
+      <div class="view" id="view-products">
+        <div class="page-header"><h1>Produits</h1><p>Catalogue complet · champ actif = <code>is_active</code></p></div>
+        <div class="table-card">
+          <div class="table-card-header">
+            <div><div class="table-card-title">Gestion du catalogue</div><div class="table-card-sub" id="products-count-sub">—</div></div>
+            <div style="display:flex;gap:10px;align-items:center">
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="show-inactive" onchange="loadProducts()"> Inactifs</label>
+              <button class="btn-primary" onclick="openProductModal()"><i class="fas fa-plus"></i>Ajouter</button>
+            </div>
+          </div>
+          <table>
+            <thead><tr><th>Produit</th><th>Catégorie</th><th>Prix (MAD)</th><th>Stock réel</th><th>Statut</th><th>is_active</th><th>Actions</th></tr></thead>
+            <tbody id="products-tbody"><tr><td colspan="7" style="text-align:center;padding:20px 0;color:#94a3b8">⏳</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RELATIONS PRODUIT -->
+      <div class="view" id="view-relations">
+        <div class="page-header"><h1>Relations produit</h1><p>Table backend : <code>dependencies</code> · PATCH/DELETE utilisent <code>dependency.id</code></p></div>
+        <div class="filter-bar">
+          <div class="filter-search"><i class="fas fa-search"></i><input type="text" id="rel-search" placeholder="Filtrer par produit…" oninput="filterRelations(this.value)"></div>
+          <select class="filter-select" id="rel-type-filter" onchange="filterRelations()">
+            <option value="">Tous les types</option>
+            <option value="internal_structure">Structure interne</option>
+            <option value="replacement_part">Pièces de remplacement</option>
+            <option value="compatible_part">Pièces compatibles</option>
+            <option value="compatible_alternative">Alternatives compatibles</option>
+            <option value="spare_part">Pièces de rechange</option>
+            <option value="accessory">Accessoires</option>
+            <option value="related_product">Produits associés</option>
+          </select>
+        </div>
+        <div class="table-card">
+          <div class="table-card-header"><div><div class="table-card-title">Toutes les relations</div><div class="table-card-sub" id="relations-count-sub">—</div></div></div>
+          <table>
+            <thead><tr><th>Parent</th><th>Type</th><th>Produit lié</th><th>SKU</th><th>Catégorie</th><th>Qté réf.</th><th>Notes</th><th></th></tr></thead>
+            <tbody id="relations-tbody"><tr><td colspan="8" style="text-align:center;padding:20px 0;color:#94a3b8">⏳</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RFQs — colonnes : quantity_requested + lead_time_days -->
+      <div class="view" id="view-rfqs">
+        <div class="page-header"><h1>Demandes de devis</h1><p>Cycle : Brouillon → Ouverte → Devis reçu → Acceptée / Rejetée / Expirée / Annulée</p></div>
+        <div class="filter-bar">
+          <select class="filter-select" id="rfq-status-filter" onchange="loadRFQs()">
+            <option value="">Tous les statuts</option>
+            <option value="draft">Brouillon</option><option value="open">Ouverte</option>
+            <option value="quoted">Devis reçu</option><option value="accepted">Acceptée</option>
+            <option value="rejected">Rejetée</option><option value="expired">Expirée</option>
+            <option value="cancelled">Annulée</option>
+          </select>
+          <button class="btn-sm" onclick="loadRFQs()"><i class="fas fa-rotate-right"></i> Actualiser</button>
+          <button class="btn-primary" onclick="openRFQModal()"><i class="fas fa-plus"></i>Nouvelle RFQ</button>
+        </div>
+        <div class="table-card">
+          <div class="table-card-header"><div><div class="table-card-title">Liste des RFQs</div><div class="table-card-sub" id="rfqs-count-sub">—</div></div></div>
+          <table>
+            <thead><tr><th>Réf.</th><th>Produit</th><th>Fournisseur</th><th>Qté dem.</th><th>Prix proposé</th><th>Délai (j)</th><th>Statut</th><th>Actions</th></tr></thead>
+            <tbody id="rfqs-tbody"><tr><td colspan="8" style="text-align:center;padding:20px 0;color:#94a3b8">⏳</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- INVENTAIRE — /inventory -->
+      <div class="view" id="view-inventory">
+        <div class="page-header">
+          <h1>Inventaire</h1>
+          <p>Stock réel = <code>current_stock</code> calculé depuis <code>stock_movements</code> · Route : <code>GET /inventory</code></p>
+        </div>
+        <div class="table-card">
+          <div class="table-card-header">
+            <div><div class="table-card-title">Toutes les références</div><div class="table-card-sub" id="inventory-count-sub">—</div></div>
+            <button class="btn-sm" onclick="loadInventory()"><i class="fas fa-rotate-right"></i> Actualiser</button>
+          </div>
+          <table>
+            <thead><tr><th>Produit</th><th>Catégorie</th><th>Stock réel</th><th>Seuil</th><th>Statut</th><th>Fournisseur préféré</th><th>Valeur estimée</th></tr></thead>
+            <tbody id="inventory-tbody"><tr><td colspan="7" style="text-align:center;padding:20px 0;color:#94a3b8">⏳</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ALERTES — /inventory/alerts -->
+      <div class="view" id="view-alerts">
+        <div class="page-header">
+          <h1>Alertes stock</h1>
+          <p>Source : <code>GET /inventory/alerts</code> · <code>recommended_action: CREATE_RFQ</code> disponible</p>
+        </div>
+        <div class="alert-grid" id="alerts-grid"><div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Chargement…</p></div></div>
+      </div>
+
+      <!-- MOUVEMENTS -->
+      <div class="view" id="view-movements">
+        <div class="page-header">
+          <h1>Mouvements de stock</h1>
+          <p>Quantité <strong>toujours positive</strong> · direction via <code>type: in | out</code> · Source : <code>/stock/{componentId}/movements</code></p>
+        </div>
+        <div class="table-card">
+          <div class="table-card-header"><div><div class="table-card-title">Historique</div><div class="table-card-sub" id="movements-count-sub">—</div></div></div>
+          <table>
+            <thead><tr><th>Produit</th><th>Direction</th><th>Quantité</th><th>Raison</th><th>Référence</th><th>Date</th></tr></thead>
+            <tbody id="movements-tbody"><tr><td colspan="6" style="text-align:center;padding:20px 0;color:#94a3b8">⏳</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- LOTS D'ACHAT — /purchase-lots -->
+      <div class="view" id="view-lots">
+        <div class="page-header">
+          <h1>Lots d'achat</h1>
+          <p>Brouillon → <strong>Finaliser</strong> → mouvement <code>PURCHASE_RECEIVED</code> créé → stock augmente</p>
+        </div>
+        <div class="table-card">
+          <div class="table-card-header">
+            <div><div class="table-card-title">Liste des lots</div><div class="table-card-sub" id="lots-count-sub">—</div></div>
+            <button class="btn-sm" onclick="loadLots()"><i class="fas fa-rotate-right"></i> Actualiser</button>
+          </div>
+          <table>
+            <thead><tr><th>Réf.</th><th>Produit</th><th>Fournisseur</th><th>Qté reçue</th><th>Coût unitaire</th><th>Coût total</th><th>Statut</th><th>Action</th></tr></thead>
+            <tbody id="lots-tbody"><tr><td colspan="8" style="text-align:center;padding:20px 0;color:#94a3b8">⏳</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- FOURNISSEURS -->
+      <div class="view" id="view-suppliers">
+        <div class="page-header"><h1>Fournisseurs</h1><p>Partenaires et performances</p></div>
+        <div class="supplier-grid" id="suppliers-grid"><div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Chargement…</p></div></div>
+      </div>
+
+      <!-- COMMANDES -->
+      <div class="view" id="view-orders">
+        <div class="page-header"><h1>Commandes</h1><p>Toutes les commandes · owner peut modifier le statut</p></div>
+        <div class="table-card">
+          <div class="table-card-header">
+            <div><div class="table-card-title">Liste des commandes</div><div class="table-card-sub" id="orders-count-sub">—</div></div>
+            <button class="btn-sm" onclick="loadOrders()"><i class="fas fa-rotate-right"></i> Actualiser</button>
+          </div>
+          <table>
+            <thead><tr><th>Réf.</th><th>Client</th><th>Total</th><th>Adresse</th><th>Statut</th><th>Action</th></tr></thead>
+            <tbody id="orders-tbody"><tr><td colspan="6" style="text-align:center;padding:20px 0;color:#94a3b8">⏳</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- NOTIFICATIONS -->
+      <div class="view" id="view-notifications">
+        <div class="page-header"><h1>Notifications</h1><p>Alertes stock, RFQs, lots d'achat, commandes</p></div>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+          <button class="btn-sm" onclick="markAllNotifsRead()"><i class="fas fa-check-double"></i> Tout marquer comme lu</button>
+        </div>
+        <div class="table-card" style="padding:0 24px">
+          <div class="table-card-header">
+            <div><div class="table-card-title">Toutes les notifications</div><div class="table-card-sub" id="notifications-count-sub">—</div></div>
+            <button class="btn-sm" onclick="loadNotifications()"><i class="fas fa-rotate-right"></i> Actualiser</button>
+          </div>
+          <div id="notifications-list" style="padding-bottom:16px"><div style="text-align:center;padding:40px 0;color:#94a3b8">⏳</div></div>
+        </div>
+      </div>
+
+      <!-- STOCK INTELLIGENCE — placeholder -->
+      <div class="view" id="view-intelligence">
+        <div class="page-header"><h1>Stock Intelligence</h1><p>Bientôt disponible</p></div>
+        <div id="stock-intelligence-placeholder"></div>
+      </div>
+
+      <!-- PROMOTIONS -->
+      <div class="view" id="view-promotions">
+        <div class="page-header"><h1>Promotions</h1><p>Gestion des promotions · statuts : ACTIVE / UPCOMING / EXPIRED / DISABLED</p></div>
+        <div class="table-card">
+          <div class="table-card-header">
+            <div><div class="table-card-title">Liste des promotions</div><div class="table-card-sub" id="promotions-count-sub">—</div></div>
+            <button class="btn-sm" onclick="loadPromotions()"><i class="fas fa-rotate-right"></i> Actualiser</button>
+          </div>
+          <table>
+            <thead><tr><th>Titre</th><th>Remise</th><th>Début</th><th>Fin</th><th>Statut</th><th></th></tr></thead>
+            <tbody id="promotions-tbody"><tr><td colspan="6" style="text-align:center;padding:20px 0;color:#94a3b8">⏳</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- REVIEWS MODERATION -->
+      <div class="view" id="view-reviews">
+        <div class="page-header"><h1>Modération des avis</h1><p>Approuver ou rejeter les avis clients avant publication</p></div>
+        <div style="display:flex;gap:10px;margin-bottom:20px">
+          <select class="filter-select" id="reviews-status-filter" onchange="loadReviews(this.value)">
+            <option value="pending">En attente</option>
+            <option value="approved">Approuvés</option>
+            <option value="rejected">Rejetés</option>
+            <option value="">Tous</option>
+          </select>
+          <button class="btn-sm" onclick="loadReviews(document.getElementById('reviews-status-filter').value)"><i class="fas fa-rotate-right"></i> Actualiser</button>
+        </div>
+        <div class="table-card">
+          <div class="table-card-header">
+            <div><div class="table-card-title">Avis clients</div><div class="table-card-sub" id="reviews-count-sub">—</div></div>
+          </div>
+          <table>
+            <thead><tr><th>Produit</th><th>Note</th><th>Commentaire</th><th>Date</th><th>Statut</th><th>Actions</th></tr></thead>
+            <tbody id="reviews-tbody"><tr><td colspan="6" style="text-align:center;padding:20px 0;color:#94a3b8">⏳</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- MODAL Produit -->
+<div class="modal-overlay" id="product-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modal-title">Ajouter un produit</h3><button class="modal-close" onclick="closeProductModal()"><i class="fas fa-xmark"></i></button></div>
+    <div class="img-upload-zone" id="img-upload-zone" onclick="document.getElementById('product-image-file').click()">
+      <input type="file" id="product-image-file" accept="image/*" style="display:none" onchange="previewImage(this)">
+      <div class="upload-placeholder" id="upload-placeholder"><i class="fas fa-image"></i><p>Cliquer pour ajouter une image</p><small>PNG, JPG, WebP · max 5 Mo</small></div>
+    </div>
+    <img id="img-preview" class="img-upload-preview" alt="Aperçu" style="display:none">
+    <div class="form-row" style="margin-top:20px">
+      <div class="form-group-dash"><label>Nom *</label><input type="text" id="p-name"></div>
+      <div class="form-group-dash">
+        <label>Catégorie * (category)</label>
+        <select id="p-category" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border);font-family:Manrope,sans-serif;font-size:13px">
+          <option value="">— Sélectionner —</option>
+          <option value="assembly">Assemblage</option>
+          <option value="sub_assembly">Sous-assemblage</option>
+          <option value="component">Composant</option>
+          <option value="raw_material">Matière première</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group-dash"><label>Stock initial (stock_qty — legacy)</label><input type="number" id="p-stock" placeholder="0" min="0"></div>
+      <div class="form-group-dash"><label>Seuil d'alerte</label><input type="number" id="p-threshold" placeholder="3" min="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group-dash"><label>Prix (MAD HT)</label><input type="number" id="p-price" placeholder="0.00" step="0.01" min="0"></div>
+      <div class="form-group-dash"><label>SKU</label><input type="text" id="p-sku" placeholder="Ex: RAB-MEC-001"></div>
+    </div>
+    <div class="form-group-dash" style="margin-top:8px"><label>Unité (unit_of_measure)</label><input type="text" id="p-uom" placeholder="pcs, kg, m…"></div>
+    <div class="form-group-dash" style="margin-top:8px"><label>Description</label><textarea id="p-desc" rows="3" style="resize:vertical"></textarea></div>
+    <div class="form-group-dash" style="margin-top:8px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="p-active" checked> Actif (is_active) — visible dans le catalogue client
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm" onclick="closeProductModal()">Annuler</button>
+      <button class="btn-primary" onclick="saveProduct()"><i class="fas fa-check"></i>Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RFQ -->
+<div class="modal-overlay" id="rfq-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-header"><h3>Nouvelle demande de devis</h3><button class="modal-close" onclick="closeRFQModal()"><i class="fas fa-xmark"></i></button></div>
+    <div class="form-group-dash"><label>Produit *</label>
+      <select id="rfq-product-select" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border);font-family:Manrope,sans-serif;font-size:13px"></select>
+    </div>
+    <div class="form-row" style="margin-top:12px">
+      <div class="form-group-dash"><label>Fournisseur *</label>
+        <select id="rfq-supplier-select" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border);font-family:Manrope,sans-serif;font-size:13px"></select>
+      </div>
+      <div class="form-group-dash"><label>Quantité (quantity_requested) *</label><input type="number" id="rfq-qty" placeholder="1" min="1"></div>
+    </div>
+    <div class="form-group-dash" style="margin-top:12px"><label>Délai souhaité</label><input type="text" id="rfq-deadline" placeholder="Ex: 15 jours ouvrés"></div>
+    <div class="form-group-dash" style="margin-top:12px"><label>Notes</label><textarea id="rfq-notes" rows="2"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn-sm" onclick="closeRFQModal()">Annuler</button>
+      <button class="btn-primary" onclick="createRFQ()"><i class="fas fa-paper-plane"></i>Créer la RFQ</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHATBOT OWNER -->
+<div class="rabbit_chatbot" id="rabbit-chatbot">
+  <button class="rabbit_chatbot_toggle" id="rabbit-chatbot-toggle" type="button">
+    <i class="fas fa-robot"></i>
+  </button>
+
+  <div class="rabbit_chatbot_panel" id="rabbit-chatbot-panel">
+    <div class="rabbit_chatbot_header">
+      <div>
+        <strong>Assistant Rabbit</strong>
+        <span>Analyse stock, commandes et réapprovisionnement</span>
+      </div>
+      <button type="button" id="rabbit-chatbot-close">
+        <i class="fas fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="rabbit_chatbot_messages" id="rabbit-chatbot-messages">
+      <div class="rabbit_msg rabbit_msg_bot">
+        Bonjour. Posez une question sur le stock, les commandes, les alertes ou les produits à réapprovisionner.
+      </div>
+    </div>
+
+<!-- CHATBOT OWNER -->
+<button class="chatbot-fab" id="chatbot-fab" type="button" aria-label="Ouvrir l'assistant Rabbit">
+  <i class="fas fa-robot"></i>
+  <span class="chatbot-fab-badge" id="chatbot-fab-badge"></span>
+</button>
+
+<div class="chatbot-overlay" id="chatbot-overlay"></div>
+
+<aside class="chatbot-drawer" id="chatbot-drawer" aria-label="Assistant Rabbit">
+  <div class="chatbot-header">
+    <div class="chatbot-header-icon">
+      <i class="fas fa-robot"></i>
+    </div>
+
+    <div class="chatbot-header-text">
+      <div class="chatbot-header-title">Assistant Rabbit</div>
+      <div class="chatbot-header-sub">Stock, commandes, alertes et réapprovisionnement</div>
+    </div>
+
+    <button class="chatbot-close-btn" id="chatbot-close-btn" type="button" aria-label="Fermer">
+      <i class="fas fa-xmark"></i>
+    </button>
+  </div>
+
+  <div class="chatbot-messages" id="chatbot-messages">
+    <div class="chatbot-welcome">
+      <div class="chatbot-welcome-icon">
+        <i class="fas fa-wand-magic-sparkles"></i>
+      </div>
+      <div class="chatbot-welcome-title">Bienvenue dans l'assistant Rabbit</div>
+      <div class="chatbot-welcome-sub">
+        Posez une question sur le stock, les commandes, les alertes ou les produits à réapprovisionner.
+      </div>
+    </div>
+  </div>
+
+  <div class="chatbot-quick-bar">
+    <button class="chatbot-quick-btn" type="button" data-prompt="Quels produits dois-je réapprovisionner bientôt et pourquoi ?">
+      Réapprovisionnement
+    </button>
+    <button class="chatbot-quick-btn" type="button" data-prompt="Quels produits sont en rupture ou à risque ?">
+      Risques stock
+    </button>
+    <button class="chatbot-quick-btn" type="button" data-prompt="Résume la santé globale du stock.">
+      Santé stock
+    </button>
+    <button class="chatbot-quick-btn" type="button" data-prompt="Montre les commandes en attente.">
+      Commandes
+    </button>
+  </div>
+
+  <form class="chatbot-input-area" id="chatbot-form">
+    <textarea class="chatbot-input" id="chatbot-input" rows="1" placeholder="Écrire une question..."></textarea>
+    <button class="chatbot-send-btn" id="chatbot-send-btn" type="submit">
+      <i class="fas fa-paper-plane"></i>
+    </button>
+  </form>
+</aside>
 <script src="js/config.js"></script>
+<script src="js/utils.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/supply_chain.js"></script>
-<div id="rfq-list"></div>
+
+<script src="js/dashboard/dashboard_api.js"></script>
+<script src="js/dashboard/dashboard_charts.js"></script>
+<script src="js/dashboard/dashboard_components.js"></script>
+<script src="js/dashboard/owner_overview.js"></script>
+<script src="js/dashboard/abc_analysis.js"></script>
+<script src="js/dashboard/product_dashboard.js"></script>
+<script src="js/dashboard/forecasting_dashboard.js"></script>
+
+<script src="js/chatbot.js"></script>
+<script src="js/owner.js"></script>
+</body>
+</html>

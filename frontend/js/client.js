@@ -1,12 +1,7 @@
 /* ============================================================
    client.js — Rabbit B2B MRO Platform — Portail Acheteur
-   Dépend de config.js + auth.js
-   Corrections handoff :
-   - apiFetchJson retourne data → plus de parseJSON()
-   - unwrap({ message, data })
-   - is_active, stock_qty/current_stock
-   - /stock/{id} pour le détail stock exact
-   - RFQ checkout : quantity_requested
+   Version optimisée — Utilise les modules partagés
+   Dépend de config.js + auth.js + utils.js
    ============================================================ */
 
 let allProducts      = [];
@@ -18,7 +13,7 @@ let detailQty        = 1;
 document.addEventListener("DOMContentLoaded", async () => {
   const user = await checkAuth("client");
   if (!user) return;
-  const initials = (user.name||"CL").slice(0,2).toUpperCase();
+  const initials = getInitials(user.name || "CL", 2);
   setEl("topbar-avatar",initials); setEl("sidebar-avatar",initials);
   if (user.name) setEl("sidebar-username", user.name);
   restoreCart();
@@ -134,8 +129,9 @@ function renderCatalogue() {
 // Appelle /stock/{id} pour stock_status et current_stock exacts
 // ══════════════════════════════════════════════════════════════
 async function openDetail(productId) {
-  const p = allProducts.find(x => x.id === productId);
-  if (!p) return;
+  try {
+    const p = allProducts.find(x => x.id === productId);
+    if (!p) return;
   currentProduct = p; detailQty = 1;
   setEl("detail-qty","1"); setEl("detail-title", p.name);
   const addBtn = document.getElementById("detail-add-btn");
@@ -177,11 +173,14 @@ async function openDetail(productId) {
   document.getElementById("detail-overlay").classList.add("open");
   document.getElementById("detail-panel").classList.add("open");
 
-  await Promise.all([
-    loadDetailStock(p.id, addBtn),
-    loadProductRelations(p.id),
-    loadProductReviews(p.id),   // /catalog/products/{id}/reviews + /rating-summary
-  ]);
+    await Promise.all([
+      loadDetailStock(p.id, addBtn),
+      loadProductRelations(p.id),
+      loadProductReviews(p.id),
+    ]);
+  } catch (err) {
+    showToast("Erreur chargement detail: " + formatApiError(err), "error");
+  }
 }
 
 // /stock/{id} → current_stock et stock_status exacts
@@ -443,8 +442,8 @@ function localStockStatus(p) {
   return { key:"ok", cls:"stock-ok", label:"Disponible" };
 }
 
-function setEl(id,val) { const e=document.getElementById(id); if(e) e.textContent=val; }
-function setVal(id,val){ const e=document.getElementById(id); if(e) e.value=val; }
+// ── Fonctions utilitaires ────────────────────────────────────
+// (Supprimées - maintenant dans utils.js : setEl, getEl, esc, formatDate, etc.)
 
 // ══════════════════════════════════════════════════════════════
 // COMMANDES CLIENT — le client voit uniquement ses propres commandes
@@ -517,32 +516,36 @@ async function loadClientNotifications() {
 }
 
 async function loadAndRenderClientNotifications() {
-  await loadClientNotifications();
-  const list = document.getElementById("client-notif-list");
-  if (!list) return;
+  try {
+    await loadClientNotifications();
+    const list = document.getElementById("client-notif-list");
+    if (!list) return;
 
-  if (!clientNotifications.length) {
-    list.innerHTML = `<p style="text-align:center;padding:40px 0;color:#94a3b8;font-size:13px">Aucune notification</p>`;
-    return;
+    if (!clientNotifications.length) {
+      list.innerHTML = '<p class="empty-centered">Aucune notification</p>';
+      return;
+    }
+
+    list.innerHTML = clientNotifications.map(n => {
+      const label   = NOTIFICATION_TYPE_LABELS[n.type] || esc(n.type) || "Notification";
+      const isUnread = !n.read_at;
+      return `
+        <div class="notif-item ${isUnread ? 'unread' : ''}">
+          <div class="notif-dot-indicator ${isUnread ? 'unread' : 'read'}"></div>
+          <div class="notif-content">
+            <div class="notif-title ${isUnread ? 'unread' : 'read'}">${label}</div>
+            <div class="notif-body">${esc(n.message || n.body || "—")}</div>
+            <div class="notif-time">${formatDate(n.created_at)}</div>
+          </div>
+          ${isUnread ? `<button class="btn-sm" style="font-size:11px;flex-shrink:0"
+            onclick="markClientNotifRead(${n.id})"><i class="fas fa-check"></i></button>` : ""}
+        </div>`;
+    }).join("");
+  } catch (err) {
+    const list = document.getElementById("client-notif-list");
+    if (list) list.innerHTML = '<p class="empty-centered">Erreur chargement notifications</p>';
+    showToast(formatApiError(err), "error");
   }
-
-  list.innerHTML = clientNotifications.map(n => {
-    const label   = NOTIFICATION_TYPE_LABELS[n.type] || esc(n.type) || "Notification";
-    const isUnread = !n.read_at;
-    return `
-      <div style="display:flex;align-items:flex-start;gap:12px;padding:14px 0;
-                  border-bottom:1px solid var(--border);${isUnread ? 'background:#f8faff' : ''}">
-        <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;
-                    background:${isUnread ? 'var(--blue)' : '#e2e8f0'}"></div>
-        <div style="flex:1">
-          <div style="font-weight:${isUnread ? '700' : '500'};font-size:13px">${label}</div>
-          <div style="font-size:12px;color:#64748b;margin-top:2px">${esc(n.message || n.body || "—")}</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:4px">${formatDate(n.created_at)}</div>
-        </div>
-        ${isUnread ? `<button class="btn-sm" style="font-size:11px;flex-shrink:0"
-          onclick="markClientNotifRead(${n.id})"><i class="fas fa-check"></i></button>` : ""}
-      </div>`;
-  }).join("");
 }
 
 async function markClientNotifRead(id) {
@@ -665,4 +668,39 @@ async function submitReview(productId, rating, title, comment) {
     showToast("Avis soumis — en attente de modération.", "success");
     await loadProductReviews(productId);
   } catch (err) { showToast(formatApiError(err)); }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// PANNEAUX LATERAUX CLIENT — fonctions extraites du HTML
+// ══════════════════════════════════════════════════════════════
+
+function showClientOrdersPanel() {
+  const overlay = document.getElementById('orders-overlay');
+  const panel = document.getElementById('orders-panel');
+  if (overlay) overlay.classList.add('open');
+  if (panel) panel.classList.add('open');
+  loadClientOrders();
+}
+
+function closeClientOrdersPanel() {
+  const overlay = document.getElementById('orders-overlay');
+  const panel = document.getElementById('orders-panel');
+  if (overlay) overlay.classList.remove('open');
+  if (panel) panel.classList.remove('open');
+}
+
+function showClientNotifPanel() {
+  const overlay = document.getElementById('notif-overlay');
+  const panel = document.getElementById('notif-panel');
+  if (overlay) overlay.classList.add('open');
+  if (panel) panel.classList.add('open');
+  loadAndRenderClientNotifications();
+}
+
+function closeClientNotifPanel() {
+  const overlay = document.getElementById('notif-overlay');
+  const panel = document.getElementById('notif-panel');
+  if (overlay) overlay.classList.remove('open');
+  if (panel) panel.classList.remove('open');
 }

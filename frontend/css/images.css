@@ -1,0 +1,91 @@
+/* Images responsives et optimisation */
+.image-optimized {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Picture element pour formats modernes avec fallbacks */
+.picture-responsive {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Lazy loading pour les images */
+img[loading="lazy"] {
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+img[loading="lazy"].loaded {
+  opacity: 1;
+}
+
+/* Optimisation des SVG */
+.svg-inline {
+  display: inline-block;
+  vertical-align: middle;
+  fill: currentColor;
+}
+
+/* Favicon et icônes */
+.favicon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+}
+
+/* Images de réseaux sociaux */
+.og-image {
+  width: 1200px;
+  height: 630px;
+  object-fit: cover;
+}
+
+/* Logos */
+.logo-svg {
+  width: auto;
+  height: 1em;
+  fill: currentColor;
+}
+
+/* Avatars et profils */
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar-large {
+  width: 80px;
+  height: 80px;
+}
+
+/* Images de produits */
+.product-image {
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+/* Images d'arrière-plan optimisées */
+.bg-image {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Media queries pour optimisation mobile */
+@media (max-width: 768px) {
+  .og-image {
+    width: 600px;
+    height: 315px;
+  }
+
+  .avatar-large {
+    width: 60px;
+    height: 60px;
+  }
+}

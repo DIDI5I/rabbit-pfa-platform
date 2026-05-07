@@ -2,7 +2,40 @@
    chatbot.css — Rabbit Chatbot Widget
    Floating button + drawer panel. Role-aware display.
    ============================================================ */
+:root {
+  --brand: var(--accent, #5b5ef4);
+  --brand-hover: var(--accent-h, #4338ca);
+  --brand-light: var(--accent-soft, #eef0ff);
+  --brand-mid: #c7b7ff;
 
+  --surface: var(--card, #ffffff);
+  --surface-2: #fafbff;
+  --bg: var(--light, #f5f7fb);
+  --border: var(--border, #e2e9f3);
+
+  --text: var(--text, #0d1526);
+  --text-2: #334155;
+  --text-3: var(--muted, #64748b);
+  --text-4: #94a3b8;
+
+  --green: var(--green, #10b981);
+  --red-light: var(--red-soft, #fee2e2);
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 22px;
+  --r-pill: 999px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-8: 32px;
+
+  --shadow-xl: 0 24px 70px rgba(38, 25, 87, .18);
+}
 /* ── Toggle button ───────────────────────────────────────────── */
 .chatbot-fab {
   position: fixed; bottom: 28px; right: 28px;

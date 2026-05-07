@@ -1,14 +1,7 @@
 /* ============================================================
    supplier.js — Rabbit B2B MRO Platform — Portail Fournisseur
-   Dépend de config.js + auth.js
-   Corrections handoff :
-   - apiFetchJson retourne data directement
-   - unwrap({ message, data })
-   - quantity_requested (pas quantity)
-   - lead_time_days integer (pas quoted_delay string)
-   - supplier_note (pas quote_note)
-   - Statut cancelled ajouté
-   - checkAuth("fournisseur")
+   Version optimisée — Utilise les modules partagés
+   Dépend de config.js + auth.js + utils.js
    ============================================================ */
 
 let allRFQs      = [];
@@ -28,7 +21,7 @@ const TERMINAL_NEGATIVE = ["rejected","expired","cancelled"];
 document.addEventListener("DOMContentLoaded", async () => {
   const user = await checkAuth("fournisseur");  // rôle réel backend
   if (!user) return;
-  const initials = (user.name||"FN").slice(0,2).toUpperCase();
+  const initials = getInitials(user.name || "FN", 2);
   setEl("topbar-avatar",initials); setEl("sidebar-avatar",initials);
   if (user.name) setEl("sidebar-username", user.name);
   await loadRFQs();
@@ -116,15 +109,19 @@ function renderTable(list) {
 // PANNEAU DÉTAIL
 // ══════════════════════════════════════════════════════════════
 async function openDetail(rfqId) {
-  const r = allRFQs.find(x=>x.id===rfqId); if(!r) return;
-  currentRFQ = r;
+  try {
+    const r = allRFQs.find(x=>x.id===rfqId); if(!r) return;
+    currentRFQ = r;
   setEl("detail-ref", `RFQ #${r.id}`);
   document.getElementById("detail-status-badge").innerHTML = rfqBadge(r.status);
   renderTimeline(r.status);
   currentActions = await fetchActions(rfqId);
   renderDetailBody(r);
-  document.getElementById("detail-overlay").classList.add("open");
-  document.getElementById("detail-panel").classList.add("open");
+    document.getElementById("detail-overlay").classList.add("open");
+    document.getElementById("detail-panel").classList.add("open");
+  } catch (err) {
+    showToast("Erreur ouverture detail: " + formatApiError(err), "error");
+  }
 }
 
 async function fetchActions(rfqId) {
@@ -295,8 +292,8 @@ function rfqStatusLabel(status) {
   return RFQ_STATUS[status]?.label || status;
 }
 
-function setEl(id,val) { const e=document.getElementById(id); if(e) e.textContent=val; }
-function setBadge(id,n){ const e=document.getElementById(id); if(!e)return; e.textContent=n; e.style.display=n>0?"flex":"none"; }
+// ── Fonctions utilitaires ────────────────────────────────────
+// (Supprimées - maintenant dans utils.js : setEl, getEl, esc, formatDate, etc.)
 
 // ══════════════════════════════════════════════════════════════
 // NOTIFICATIONS FOURNISSEUR — uniquement ses notifications
@@ -315,37 +312,63 @@ async function loadSupplierNotifications() {
 }
 
 async function loadAndRenderSupplierNotifications() {
-  await loadSupplierNotifications();
-  const list = document.getElementById("supplier-notif-list");
-  if (!list) return;
+  try {
+    await loadSupplierNotifications();
+    const list = document.getElementById("supplier-notif-list");
+    if (!list) return;
 
-  if (!supplierNotifications.length) {
-    list.innerHTML = `<p style="text-align:center;padding:40px 0;color:#94a3b8;font-size:13px">Aucune notification</p>`;
-    return;
+    if (!supplierNotifications.length) {
+      list.innerHTML = '<p class="empty-centered">Aucune notification</p>';
+      return;
+    }
+
+    list.innerHTML = supplierNotifications.map(n => {
+      const label    = NOTIFICATION_TYPE_LABELS[n.type] || esc(n.type) || "Notification";
+      const isUnread = !n.read_at;
+      return `
+        <div class="notif-item ${isUnread ? 'unread' : ''}">
+          <div class="notif-dot-indicator ${isUnread ? 'unread' : 'read'}" style="background:${isUnread ? 'var(--green)' : '#e2e8f0'}"></div>
+          <div class="notif-content">
+            <div class="notif-title ${isUnread ? 'unread' : 'read'}">${label}</div>
+            <div class="notif-body">${esc(n.message || n.body || "—")}</div>
+            <div class="notif-time">${formatDate(n.created_at)}</div>
+          </div>
+          ${isUnread ? `<button class="btn-sm" style="font-size:11px;flex-shrink:0"
+            onclick="markSupplierNotifRead(${n.id})"><i class="fas fa-check"></i></button>` : ""}
+        </div>`;
+    }).join("");
+  } catch (err) {
+    const list = document.getElementById("supplier-notif-list");
+    if (list) list.innerHTML = '<p class="empty-centered">Erreur chargement notifications</p>';
+    showToast(formatApiError(err), "error");
   }
-
-  list.innerHTML = supplierNotifications.map(n => {
-    const label    = NOTIFICATION_TYPE_LABELS[n.type] || esc(n.type) || "Notification";
-    const isUnread = !n.read_at;
-    return `
-      <div style="display:flex;align-items:flex-start;gap:12px;padding:14px 0;
-                  border-bottom:1px solid var(--border)">
-        <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;
-                    background:${isUnread ? 'var(--green)' : '#e2e8f0'}"></div>
-        <div style="flex:1">
-          <div style="font-weight:${isUnread ? '700' : '500'};font-size:13px">${label}</div>
-          <div style="font-size:12px;color:#64748b;margin-top:2px">${esc(n.message || n.body || "—")}</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:4px">${formatDate(n.created_at)}</div>
-        </div>
-        ${isUnread ? `<button class="btn-sm" style="font-size:11px;flex-shrink:0"
-          onclick="markSupplierNotifRead(${n.id})"><i class="fas fa-check"></i></button>` : ""}
-      </div>`;
-  }).join("");
 }
 
 async function markSupplierNotifRead(id) {
   try {
     await apiFetchJson(`/notifications/${id}/read`, { method: "PATCH" });
     await loadAndRenderSupplierNotifications();
-  } catch {}
+  } catch (err) {
+    showToast(formatApiError(err), "error");
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// PANNEAU NOTIFICATIONS FOURNISSEUR — fonctions extraites du HTML
+// ══════════════════════════════════════════════════════════════
+
+async function openSupplierNotifPanel() {
+  const overlay = document.getElementById('supplier-notif-overlay');
+  const panel = document.getElementById('supplier-notif-panel');
+  if (overlay) overlay.classList.add('open');
+  if (panel) panel.classList.add('open');
+  await loadAndRenderSupplierNotifications();
+}
+
+function closeSupplierNotifPanel() {
+  const overlay = document.getElementById('supplier-notif-overlay');
+  const panel = document.getElementById('supplier-notif-panel');
+  if (overlay) overlay.classList.remove('open');
+  if (panel) panel.classList.remove('open');
 }
