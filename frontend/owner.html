@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/analytics_v2.css">
   <link rel="stylesheet" href="css/owner_analytics.css">
   <link rel="stylesheet" href="css/chatbot.css">
   <style>
@@ -406,29 +407,6 @@
 </div>
 
 <!-- CHATBOT OWNER -->
-<div class="rabbit_chatbot" id="rabbit-chatbot">
-  <button class="rabbit_chatbot_toggle" id="rabbit-chatbot-toggle" type="button">
-    <i class="fas fa-robot"></i>
-  </button>
-
-  <div class="rabbit_chatbot_panel" id="rabbit-chatbot-panel">
-    <div class="rabbit_chatbot_header">
-      <div>
-        <strong>Assistant Rabbit</strong>
-        <span>Analyse stock, commandes et réapprovisionnement</span>
-      </div>
-      <button type="button" id="rabbit-chatbot-close">
-        <i class="fas fa-xmark"></i>
-      </button>
-    </div>
-
-    <div class="rabbit_chatbot_messages" id="rabbit-chatbot-messages">
-      <div class="rabbit_msg rabbit_msg_bot">
-        Bonjour. Posez une question sur le stock, les commandes, les alertes ou les produits à réapprovisionner.
-      </div>
-    </div>
-
-<!-- CHATBOT OWNER -->
 <button class="chatbot-fab" id="chatbot-fab" type="button" aria-label="Ouvrir l'assistant Rabbit">
   <i class="fas fa-robot"></i>
   <span class="chatbot-fab-badge" id="chatbot-fab-badge"></span>
@@ -490,14 +468,12 @@
 <script src="js/utils.js"></script>
 <script src="js/auth.js"></script>
 
-<script src="js/dashboard/dashboard_api.js"></script>
-<script src="js/dashboard/dashboard_charts.js"></script>
-<script src="js/dashboard/dashboard_components.js"></script>
-<script src="js/dashboard/owner_overview.js"></script>
-<script src="js/dashboard/abc_analysis.js"></script>
-<script src="js/dashboard/product_dashboard.js"></script>
+<script src="js/dashboard/analytics_shared.js"></script>
+<script src="js/dashboard/analytics_layout.js"></script>
+<script src="js/dashboard/abc_dashboard.js"></script>
+<script src="js/dashboard/products_dashboard.js"></script>
 <script src="js/dashboard/forecasting_dashboard.js"></script>
-
+<script src="js/dashboard/owner_overview.js"></script>
 <script src="js/chatbot.js"></script>
 <script src="js/owner.js"></script>
 </body>

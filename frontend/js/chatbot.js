@@ -7,6 +7,7 @@
 const RabbitChatbot = {
   isOpen: false,
   isSending: false,
+  debugMode: false,
 
   init() {
     this.fab = document.getElementById("chatbot-fab");
@@ -19,7 +20,19 @@ const RabbitChatbot = {
     this.sendBtn = document.getElementById("chatbot-send-btn");
     this.messages = document.getElementById("chatbot-messages");
 
+    console.log("RabbitChatbot init:", {
+      fab: !!this.fab,
+      drawer: !!this.drawer,
+      overlay: !!this.overlay,
+      closeBtn: !!this.closeBtn,
+      form: !!this.form,
+      input: !!this.input,
+      sendBtn: !!this.sendBtn,
+      messages: !!this.messages,
+    });
+
     if (!this.fab || !this.drawer || !this.form || !this.input || !this.messages) {
+      console.error("Chatbot cannot start: missing required HTML elements.");
       return;
     }
 
@@ -98,16 +111,20 @@ const RabbitChatbot = {
     const typingId = this.addTypingMessage();
 
     try {
-      const response = await apiFetchJson("/chatbot/ask", {
+      const endpoint = this.debugMode ? "/chatbot/ask?debug=1" : "/chatbot/ask";
+
+      const response = await apiFetchJson(endpoint, {
         method: "POST",
         body: JSON.stringify({ message }),
       });
 
       const payload = response?.data ?? response;
-      const html = this.renderBotResponse(payload);
+
+      const html = this.renderBotResponse(payload, {
+        debug: this.debugMode,
+      });
 
       this.replaceMessageHtml(typingId, html, "bot");
-
       this.bindSuggestedActions();
 
       if (payload?.result_meta?.ai) {
@@ -115,9 +132,10 @@ const RabbitChatbot = {
       }
     } catch (err) {
       console.error("Chatbot error:", err);
+
       this.replaceMessageHtml(
         typingId,
-        this.escapeHtml(this.formatError(err)),
+        `<div class="chatbot-answer-main">${this.escapeHtml(this.formatError(err))}</div>`,
         "fail"
       );
     } finally {
@@ -191,98 +209,136 @@ const RabbitChatbot = {
     this.scrollToBottom();
   },
 
-  renderBotResponse(payload) {
-    const answer = payload?.answer || "Réponse reçue.";
-    const intent = payload?.intent || null;
-    const confidence = payload?.confidence || null;
-    const role = payload?.role || null;
-    const operation = payload?.operation_type || null;
-    const summary = payload?.summary || null;
+  renderBotResponse(payload = {}, options = {}) {
+    const debug = options.debug === true;
+
+    const answer = payload?.answer || "Réponse indisponible.";
     const items = Array.isArray(payload?.items_preview) ? payload.items_preview : [];
+    const actions = Array.isArray(payload?.suggested_actions) ? payload.suggested_actions : [];
+    const summary = payload?.summary || {};
+    const meta = payload?.result_meta || {};
     const sources = Array.isArray(payload?.sources) ? payload.sources : [];
     const limitations = Array.isArray(payload?.limitations) ? payload.limitations : [];
-    const actions = Array.isArray(payload?.suggested_actions) ? payload.suggested_actions : [];
 
     return `
-      <div>${this.escapeHtml(answer)}</div>
-
-      ${
-        intent || confidence || role || operation
-          ? `<div class="chatbot-intent-strip">
-              ${intent ? `<span class="chatbot-intent-tag">${this.escapeHtml(intent)}</span>` : ""}
-              ${confidence ? `<span class="chatbot-op-tag">Confiance: ${this.escapeHtml(confidence)}</span>` : ""}
-              ${role ? `<span class="chatbot-op-tag">Rôle: ${this.escapeHtml(role)}</span>` : ""}
-              ${operation ? `<span class="chatbot-op-tag">${this.escapeHtml(operation)}</span>` : ""}
-            </div>`
-          : ""
-      }
-
-      ${summary ? this.renderSummary(summary) : ""}
-
-      ${items.length ? this.renderItemsPreview(items) : ""}
-
-      ${sources.length ? this.renderSources(sources) : ""}
-
-      ${limitations.length ? this.renderLimitations(limitations) : ""}
-
-      ${
-        actions.length
-          ? `<div class="chatbot-suggestions">
-              ${actions.map((action) => `
-                <button class="chatbot-suggestion-btn" type="button" data-prompt="${this.escapeHtml(action)}">
-                  ${this.escapeHtml(action)}
-                </button>
-              `).join("")}
-            </div>`
-          : ""
-      }
-    `;
-  },
-
-  renderSummary(summary) {
-    const rows = Object.entries(summary)
-      .filter(([_, value]) => value !== null && typeof value !== "object")
-      .map(([key, value]) => `
-        <div class="chatbot-source-item">
-          <i class="fas fa-chart-simple"></i>
-          <span>${this.escapeHtml(this.labelize(key))}: <strong>${this.escapeHtml(String(value))}</strong></span>
+      <div class="chatbot-answer">
+        <div class="chatbot-answer-main">
+          ${this.escapeHtml(answer)}
         </div>
-      `)
-      .join("");
 
-    return `
-      <div class="chatbot-sources">
-        ${rows}
+        ${items.length ? this.renderItemsPreview(items, payload.intent) : ""}
+
+        ${
+          actions.length
+            ? `
+              <div class="chatbot-suggested-actions">
+                ${actions.map((action) => `
+                  <button class="chatbot-action-chip chatbot-suggestion-btn" type="button" data-prompt="${this.escapeHtml(action)}">
+                    ${this.escapeHtml(action)}
+                  </button>
+                `).join("")}
+              </div>
+            `
+            : ""
+        }
+
+        <details class="chatbot-details">
+          <summary>Voir les détails</summary>
+
+          <div class="chatbot-details-body">
+            <div><strong>Intent:</strong> ${this.escapeHtml(payload.intent || "—")}</div>
+            <div><strong>Confiance:</strong> ${this.escapeHtml(payload.confidence || "—")}</div>
+            <div><strong>Rôle:</strong> ${this.escapeHtml(payload.role || "—")}</div>
+            <div><strong>Opération:</strong> ${this.escapeHtml(payload.operation_type || "—")}</div>
+            <div><strong>Total:</strong> ${this.escapeHtml(meta.total ?? summary.total ?? "—")}</div>
+            <div><strong>Affichés:</strong> ${this.escapeHtml(meta.shown ?? summary.shown ?? items.length)}</div>
+            <div><strong>Plus de résultats:</strong> ${meta.has_more ? "Oui" : "Non"}</div>
+
+            ${
+              sources.length
+                ? `
+                  <div style="margin-top:8px">
+                    <strong>Sources:</strong>
+                    <ul>
+                      ${sources.map((source) => `
+                        <li>${this.escapeHtml(source.tool || "source")} — ${this.escapeHtml(source.status || "used")}</li>
+                      `).join("")}
+                    </ul>
+                  </div>
+                `
+                : ""
+            }
+
+            ${
+              limitations.length
+                ? `
+                  <div style="margin-top:8px">
+                    <strong>Limites:</strong>
+                    <ul>
+                      ${limitations.map((limitation) => `
+                        <li>${this.escapeHtml(limitation)}</li>
+                      `).join("")}
+                    </ul>
+                  </div>
+                `
+                : ""
+            }
+          </div>
+        </details>
+
+        ${debug ? this.renderDebugDetails(payload) : ""}
       </div>
     `;
   },
 
-  renderItemsPreview(items) {
+  renderItemsPreview(items, intent = "") {
     return `
-      <div class="chatbot-sources">
-        ${items.map((item) => {
-          const title =
-            item.name ||
-            item.product_name ||
-            item.client_name ||
-            item.sku ||
-            `Commande #${item.order_id || item.id || item.product_id || "—"}`;
+      <div class="chatbot-preview">
+        <div class="chatbot-preview-title">Aperçu</div>
 
-          const meta = [
-            item.status ? `Statut: ${item.status}` : null,
-            item.total_amount != null ? `Total: ${item.total_amount} MAD` : null,
-            item.current_stock != null ? `Stock: ${item.current_stock}` : null,
-            item.low_stock_threshold != null ? `Seuil: ${item.low_stock_threshold}` : null,
-            item.recommended_reorder_quantity != null ? `Qté: ${item.recommended_reorder_quantity}` : null,
-            item.estimated_reorder_value != null ? `Valeur: ${item.estimated_reorder_value} MAD` : null,
-            item.priority ? `Priorité: ${item.priority}` : null,
-            item.confidence ? `Confiance: ${item.confidence}` : null,
-          ].filter(Boolean).join(" · ");
+        ${items.slice(0, 5).map((item) => {
+          if (intent === "order_summary" || item.order_id) {
+            return `
+              <div class="chatbot-preview-item">
+                <div>
+                  <strong>Commande #${this.escapeHtml(item.order_id || "—")}</strong>
+                  <span>${this.escapeHtml(item.client_name || "Client inconnu")}</span>
+                </div>
+                <div>
+                  <span class="chatbot-status">${this.escapeHtml(item.status || "—")}</span>
+                  <strong>${this.formatMoney(item.total_amount)}</strong>
+                </div>
+              </div>
+            `;
+          }
+
+          if (item.name || item.product_name || item.sku) {
+            return `
+              <div class="chatbot-preview-item">
+                <div>
+                  <strong>${this.escapeHtml(item.name || item.product_name || "Produit")}</strong>
+                  <span>${this.escapeHtml(item.sku || item.status || "")}</span>
+                </div>
+                <div>
+                  <span>${this.escapeHtml(item.priority || item.confidence || "")}</span>
+                  ${
+                    item.estimated_reorder_value != null
+                      ? `<strong>${this.formatMoney(item.estimated_reorder_value)}</strong>`
+                      : item.current_stock != null
+                        ? `<strong>Stock: ${this.escapeHtml(item.current_stock)}</strong>`
+                        : ""
+                  }
+                </div>
+              </div>
+            `;
+          }
 
           return `
-            <div class="chatbot-source-item">
-              <i class="fas fa-circle-dot"></i>
-              <span><strong>${this.escapeHtml(title)}</strong>${meta ? ` — ${this.escapeHtml(meta)}` : ""}</span>
+            <div class="chatbot-preview-item">
+              <div>
+                <strong>Élément</strong>
+                <span>${this.escapeHtml(JSON.stringify(item))}</span>
+              </div>
             </div>
           `;
         }).join("")}
@@ -290,29 +346,38 @@ const RabbitChatbot = {
     `;
   },
 
-  renderSources(sources) {
-    return `
-      <div class="chatbot-sources">
-        ${sources.map((source) => `
-          <div class="chatbot-source-item">
-            <i class="fas fa-database"></i>
-            <span>Source: ${this.escapeHtml(source.tool || "outil")} · ${this.escapeHtml(source.status || "utilisé")}</span>
-          </div>
-        `).join("")}
-      </div>
-    `;
-  },
+  renderDebugDetails(payload = {}) {
+    const ai = payload?.result_meta?.ai;
 
-  renderLimitations(limitations) {
+    if (!ai) return "";
+
     return `
-      <div class="chatbot-sources">
-        ${limitations.map((limitation) => `
-          <div class="chatbot-source-item">
-            <i class="fas fa-circle-exclamation"></i>
-            <span>Limite: ${this.escapeHtml(limitation)}</span>
-          </div>
-        `).join("")}
-      </div>
+      <details class="chatbot-debug">
+        <summary>Debug IA</summary>
+
+        <div class="chatbot-debug-body">
+          <div><strong>Provider:</strong> ${this.escapeHtml(ai.provider || "—")}</div>
+          <div><strong>Model:</strong> ${this.escapeHtml(ai.model || "—")}</div>
+          <div><strong>Prompt:</strong> ${this.escapeHtml(ai.prompt_version || "—")}</div>
+          <div><strong>Validation:</strong> ${ai.validation_passed ? "Validée" : "Échouée"}</div>
+          <div><strong>Fallback:</strong> ${this.escapeHtml(ai.fallback_reason || "—")}</div>
+          <div><strong>Input chars:</strong> ${this.escapeHtml(ai.input_char_count ?? "—")}</div>
+          <div><strong>Output chars:</strong> ${this.escapeHtml(ai.output_char_count ?? "—")}</div>
+
+          ${
+            Array.isArray(ai.validation_violations) && ai.validation_violations.length
+              ? `
+                <div>
+                  <strong>Violations:</strong>
+                  <ul>
+                    ${ai.validation_violations.map((v) => `<li>${this.escapeHtml(v)}</li>`).join("")}
+                  </ul>
+                </div>
+              `
+              : ""
+          }
+        </div>
+      </details>
     `;
   },
 
@@ -321,6 +386,7 @@ const RabbitChatbot = {
       if (btn.dataset.bound === "1") return;
 
       btn.dataset.bound = "1";
+
       btn.addEventListener("click", async () => {
         const prompt = btn.dataset.prompt;
         if (!prompt) return;
@@ -334,7 +400,10 @@ const RabbitChatbot = {
 
   setFormDisabled(disabled) {
     this.input.disabled = disabled;
-    if (this.sendBtn) this.sendBtn.disabled = disabled;
+
+    if (this.sendBtn) {
+      this.sendBtn.disabled = disabled;
+    }
   },
 
   autoResizeInput() {
@@ -345,6 +414,8 @@ const RabbitChatbot = {
   },
 
   scrollToBottom() {
+    if (!this.messages) return;
+
     this.messages.scrollTop = this.messages.scrollHeight;
   },
 
@@ -352,34 +423,12 @@ const RabbitChatbot = {
     return `chatbot_msg_${Date.now()}_${Math.random().toString(16).slice(2)}`;
   },
 
-  labelize(key) {
-    const labels = {
-      total: "Total",
-      pending: "En attente",
-      processing: "En traitement",
-      shipped: "Expédiées",
-      delivered: "Livrées",
-      cancelled: "Annulées",
-      total_amount: "Montant total",
-      shown: "Affichées",
-      shown_this_response: "Affichées ici",
-      recommended_count: "Recommandées",
-      critical_count: "Critiques",
-      high_count: "Priorité élevée",
-      medium_count: "Priorité moyenne",
-      low_count: "Priorité basse",
-      estimated_reorder_value: "Valeur estimée",
-      total_products: "Produits totaux",
-      estimate_only_count: "Estimations seules",
-    };
+  formatMoney(value) {
+    const n = Number(value);
 
-    return labels[key] || key.replaceAll("_", " ");
-  },
+    if (!Number.isFinite(n)) return "—";
 
-  escapeHtml(value) {
-    const div = document.createElement("div");
-    div.textContent = value == null ? "" : String(value);
-    return div.innerHTML;
+    return `${n.toLocaleString("fr-FR")} MAD`;
   },
 
   formatError(err) {
@@ -406,6 +455,12 @@ const RabbitChatbot = {
     }
 
     return err.message || err.error || "Impossible de contacter l'assistant.";
+  },
+
+  escapeHtml(value) {
+    const div = document.createElement("div");
+    div.textContent = value == null ? "" : String(value);
+    return div.innerHTML;
   },
 };
 

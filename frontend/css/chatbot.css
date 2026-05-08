@@ -304,3 +304,137 @@
 }
 .chatbot-welcome-title { font-size: 14px; font-weight: 700; color: var(--text-2); margin-bottom: var(--space-2); }
 .chatbot-welcome-sub   { font-size: 12px; line-height: 1.6; }
+/* Force chatbot to stay hidden until opened */
+.chatbot-overlay {
+  display: none;
+}
+
+.chatbot-overlay.open {
+  display: block;
+}
+
+.chatbot-drawer {
+  position: fixed !important;
+  right: 24px;
+  bottom: 92px;
+  width: 420px;
+  max-width: calc(100vw - 48px);
+  height: 620px;
+  max-height: calc(100vh - 130px);
+  z-index: 9999;
+
+  transform: translateY(24px) scale(0.98);
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.chatbot-drawer.open {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.chatbot-fab {
+  position: fixed !important;
+  right: 28px;
+  bottom: 28px;
+  z-index: 10000;
+}
+
+.chatbot-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chatbot-answer-main {
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.chatbot-preview {
+  border: 1px solid #e8e4f3;
+  background: #faf9ff;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.chatbot-preview-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: #6f42f5;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.chatbot-preview-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #ece8f5;
+  font-size: 13px;
+}
+
+.chatbot-preview-item:last-child {
+  border-bottom: none;
+}
+
+.chatbot-preview-item div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chatbot-preview-item span {
+  color: #7b819b;
+  font-size: 12px;
+}
+
+.chatbot-status {
+  text-transform: capitalize;
+  color: #6f42f5 !important;
+  font-weight: 700;
+}
+
+.chatbot-suggested-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chatbot-action-chip {
+  border: 1px solid #d7cdfb;
+  background: #f4f0ff;
+  color: #5b2ed6;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chatbot-details,
+.chatbot-debug {
+  border-top: 1px solid #ece8f5;
+  padding-top: 8px;
+  font-size: 12px;
+  color: #5f657c;
+}
+
+.chatbot-details summary,
+.chatbot-debug summary {
+  cursor: pointer;
+  font-weight: 800;
+  color: #6f42f5;
+}
+
+.chatbot-details-body,
+.chatbot-debug-body {
+  margin-top: 8px;
+  display: grid;
+  gap: 4px;
+}
