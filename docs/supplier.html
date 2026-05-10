@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rabbit — Portail Fournisseur</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <style>
+    /* Badges RFQ */
+    .badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.03em}
+    .badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.6}
+    .badge-draft{background:#f1f5f9;color:#64748b}.badge-open{background:#dbeafe;color:#1d4ed8}
+    .badge-quoted{background:#fed7aa;color:#c2410c}.badge-accepted{background:#dcfce7;color:#15803d}
+    .badge-rejected{background:#fee2e2;color:#b91c1c}
+    .badge-expired,.badge-cancelled{background:#f1f5f9;color:#94a3b8}
+
+    /* Panneau détail */
+    .detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:399;display:none}
+    .detail-overlay.open{display:block}
+    .detail-panel{position:fixed;top:0;right:0;width:520px;height:100vh;background:var(--surface);border-left:1px solid var(--border);z-index:400;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);box-shadow:-8px 0 32px rgba(0,0,0,.1)}
+    .detail-panel.open{transform:translateX(0)}
+    .detail-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .detail-header-left h3{font-size:16px;font-weight:700;margin-bottom:4px}
+    .detail-close{background:none;border:none;cursor:pointer;font-size:18px;color:#94a3b8;padding:4px;flex-shrink:0;border-radius:6px;transition:color .15s}
+    .detail-close:hover{color:var(--text)}
+    .detail-body{flex:1;overflow-y:auto;padding:0 0 24px}
+    .detail-section{padding:20px 24px;border-bottom:1px solid var(--border)}
+    .detail-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:14px}
+    .detail-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .detail-meta-label{font-size:11px;color:#94a3b8;margin-bottom:3px}
+    .detail-meta-val{font-size:14px;font-weight:600}
+
+    /* Formulaire réponse */
+    .response-form{padding:20px 24px}
+    .response-form .form-group-dash{margin-bottom:14px}
+    .response-form label{display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px}
+    .response-form input,.response-form textarea{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-family:Manrope,sans-serif;font-size:13px;background:var(--surface);color:var(--text);outline:none;transition:border-color .15s;box-sizing:border-box}
+    .response-form input:focus,.response-form textarea:focus{border-color:var(--blue)}
+    .response-form textarea{resize:vertical}
+    .response-actions{display:flex;gap:10px;margin-top:20px}
+
+    /* Timeline */
+    .rfq-timeline{display:flex;align-items:center;padding:16px 24px;overflow-x:auto}
+    .timeline-step{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:60px;position:relative}
+    .timeline-step::after{content:"";position:absolute;top:12px;left:50%;right:-50%;height:2px;background:var(--border);z-index:0}
+    .timeline-step:last-child::after{display:none}
+    .timeline-dot{width:24px;height:24px;border-radius:50%;border:2px solid var(--border);background:var(--surface);z-index:1;display:flex;align-items:center;justify-content:center;font-size:10px}
+    .timeline-dot.done{background:var(--green);border-color:var(--green);color:#fff}
+    .timeline-dot.active{background:var(--blue);border-color:var(--blue);color:#fff}
+    .timeline-dot.fail{background:var(--red);border-color:var(--red);color:#fff}
+    .timeline-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#94a3b8;text-align:center;white-space:nowrap}
+    .timeline-label.active{color:var(--blue)}.timeline-label.done{color:var(--green)}.timeline-label.fail{color:var(--red)}
+
+    /* Devis soumis */
+    .quote-summary{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;display:flex;align-items:center;gap:16px}
+    .quote-summary-icon{font-size:24px}
+    .quote-summary-val{font-size:20px;font-weight:800;color:var(--green)}
+    .quote-summary-label{font-size:12px;color:#94a3b8}
+
+    .kpi-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+    .filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+    .filter-select{padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-family:Manrope,sans-serif;font-size:13px;cursor:pointer}
+    tbody tr{cursor:pointer}
+    tbody tr:hover td{background:#f8fafc}
+    .chat-widget{display:none!important}
+  </style>
+</head>
+<body>
+<div class="dash-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-mark">
+        <img src="/logo.svg" alt="Rabbit Logo" width="17" height="17">
+      </div>
+      <div><div class="sidebar-brand-name">Rabbit</div><div class="sidebar-brand-tag">Portail Fournisseur</div></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Demandes de devis</div>
+      <a class="sidebar-item active" onclick="filterByStatus('')"><i class="fas fa-file-lines"></i>Toutes les RFQs<span class="sidebar-badge" id="sb-total" style="display:none">0</span></a>
+      <a class="sidebar-item" onclick="filterByStatus('open')"><i class="fas fa-lock-open"></i>Ouvertes<span class="sidebar-badge alert" id="sb-open" style="display:none">0</span></a>
+      <a class="sidebar-item" onclick="filterByStatus('quoted')"><i class="fas fa-paper-plane"></i>Devis envoyés<span class="sidebar-badge" id="sb-quoted" style="display:none">0</span></a>
+      <a class="sidebar-item" onclick="filterByStatus('accepted')"><i class="fas fa-check-double"></i>Acceptées<span class="sidebar-badge" id="sb-accepted" style="display:none">0</span></a>
+      <div class="sidebar-section-label">Mon profil</div>
+      <a class="sidebar-item disabled"><i class="fas fa-box-open"></i>Mon catalogue</a>
+      <a class="sidebar-item disabled"><i class="fas fa-star"></i>Performance</a>
+      <a class="sidebar-item disabled"><i class="fas fa-gear"></i>Paramètres</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebar-avatar" style="background:var(--green)">FN</div>
+        <div><div class="sidebar-user-name" id="sidebar-username">Fournisseur</div><div class="sidebar-user-role">Partenaire</div></div>
+        <button class="sidebar-logout" onclick="logout()"><i class="fas fa-right-from-bracket"></i></button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="dash-main">
+    <div class="topbar">
+      <div class="topbar-title">Demandes de devis</div>
+      <div class="topbar-notif" style="position:relative;padding:8px;cursor:pointer" onclick="openSupplierNotifPanel()">
+        <i class="fas fa-bell" style="font-size:16px;color:#64748b"></i>
+        <div id="notif-dot" style="position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#ef4444;display:none"></div>
+      </div>
+      <div class="topbar-avatar" id="topbar-avatar" style="background:var(--green)">FN</div>
+    </div>
+
+    <div class="dash-content">
+      <div class="page-header"><h1>Demandes de devis</h1><p>Consultez et répondez aux demandes de vos clients</p></div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid-3">
+        <div class="kpi-card fade-up"><div class="kpi-card-top"><div class="kpi-icon blue"><i class="fas fa-lock-open"></i></div></div><div class="kpi-value" id="kpi-open">—</div><div class="kpi-label">Ouvertes</div><div class="kpi-mini-bar blue"></div></div>
+        <div class="kpi-card fade-up delay-1"><div class="kpi-card-top"><div class="kpi-icon orange"><i class="fas fa-paper-plane"></i></div></div><div class="kpi-value" id="kpi-quoted">—</div><div class="kpi-label">Devis envoyés</div><div class="kpi-mini-bar orange"></div></div>
+        <div class="kpi-card fade-up delay-2"><div class="kpi-card-top"><div class="kpi-icon green"><i class="fas fa-check-circle"></i></div></div><div class="kpi-value" id="kpi-accepted">—</div><div class="kpi-label">Acceptées</div><div class="kpi-mini-bar green"></div></div>
+      </div>
+
+      <div class="filter-bar">
+        <select class="filter-select" id="status-filter" onchange="applyFilter()">
+          <option value="">Tous les statuts</option>
+          <option value="draft">Brouillon</option><option value="open">Ouverte</option>
+          <option value="quoted">Devis envoyé</option><option value="accepted">Acceptée</option>
+          <option value="rejected">Rejetée</option><option value="expired">Expirée</option>
+          <option value="cancelled">Annulée</option>
+        </select>
+        <button class="btn-sm" onclick="loadRFQs()"><i class="fas fa-rotate-right"></i> Actualiser</button>
+      </div>
+
+      <!-- Table — colonnes : quantity_requested + lead_time_days (integer) -->
+      <div class="table-card">
+        <div class="table-card-header">
+          <div><div class="table-card-title">Liste des demandes</div><div class="table-card-sub" id="rfq-sub">Chargement…</div></div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Réf.</th>
+              <th>Produit</th>
+              <th>Qté dem.</th>
+              <th>Délai proposé (j)</th>
+              <th>Prix proposé</th>
+              <th>Statut</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="rfq-tbody">
+            <tr><td colspan="7" style="text-align:center;padding:40px 0;color:#94a3b8"><i class="fas fa-spinner fa-spin" style="font-size:20px"></i></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Panneau détail RFQ -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detail-panel">
+  <div class="detail-header">
+    <div class="detail-header-left">
+      <h3 id="detail-ref">RFQ #—</h3>
+      <span id="detail-status-badge"></span>
+    </div>
+    <button class="detail-close" onclick="closeDetail()"><i class="fas fa-xmark"></i></button>
+  </div>
+  <div class="rfq-timeline" id="rfq-timeline"></div>
+  <div class="detail-body" id="detail-body"></div>
+</div>
+
+<!-- Notifications panel fournisseur -->
+<div id="supplier-notif-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:498;display:none" onclick="closeSupplierNotifPanel()"></div>
+<div id="supplier-notif-panel" class="side-panel">
+  <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+    <h3 style="font-weight:700;font-size:16px">Mes notifications</h3>
+    <button style="background:none;border:none;cursor:pointer;font-size:18px;color:#94a3b8" onclick="closeSupplierNotifPanel()"><i class="fas fa-xmark"></i></button>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:0 24px" id="supplier-notif-list">
+    <div style="text-align:center;padding:40px 0;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i></div>
+  </div>
+</div>
+
+<!-- Panel functions now in supplier.js -->
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/supplier.js"></script>
+</body>
+</html>

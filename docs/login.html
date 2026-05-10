@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rabbit — Connexion</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/images.css">
+</head>
+<body>
+  <div class="login-wrap">
+    <section class="login-left">
+      <div class="login-brand">
+        <div class="login-brand-mark">
+          <img src="/logo.svg" alt="Rabbit Logo" width="20" height="20">
+        </div>
+        <div class="login-brand-name">Rabbit</div>
+      </div>
+      <div class="login-left-content">
+        <h1>Accédez à votre espace <em>Rabbit</em></h1>
+        <p>Gestion de stock, demandes d'achat et suivi fournisseurs pour les équipes opérationnelles et administratives.</p>
+        <div class="login-features-list">
+          <div class="login-feat"><span class="login-feat-check"><i class="fas fa-check"></i></span> Interface moderne et claire</div>
+          <div class="login-feat"><span class="login-feat-check"><i class="fas fa-check"></i></span> Sécurité par session protégée</div>
+          <div class="login-feat"><span class="login-feat-check"><i class="fas fa-check"></i></span> Compatible acheteurs, fournisseurs et administrateurs</div>
+        </div>
+      </div>
+      <div class="login-left-footer">Connexion sécurisée et rapide. Entrez votre adresse email et mot de passe.</div>
+    </section>
+
+    <section class="login-right">
+      <h2>Connexion</h2>
+      <p>Connectez-vous à votre compte pour accéder à votre tableau de bord.</p>
+
+      <div class="form-group">
+        <label for="login-email">Email</label>
+        <input id="login-email" type="email" placeholder="votre.email@exemple.com" autocomplete="email">
+      </div>
+
+      <div class="form-group">
+        <label for="login-password">Mot de passe</label>
+        <input id="login-password" type="password" placeholder="••••••••••" autocomplete="current-password">
+      </div>
+
+      <div id="login-error" style="display:none;color:#b91c1c;font-size:13px;margin-bottom:16px;"></div>
+      <button id="do-login" class="btn-login">Se connecter →</button>
+      <a href="signup.html" class="btn-hero-secondary" style="display:inline-flex;justify-content:center;width:100%;margin-top:16px;">Créer un compte</a>
+      <a href="landing.html" class="btn-hero-secondary" style="display:inline-flex;justify-content:center;width:100%;margin-top:8px;">Retour au landing</a>
+
+      <div class="login-demo">
+        <p>Utilisez un compte de test si besoin :</p>
+        <div class="login-demo-item"><code>client@example.com</code> / <code>demo1234</code></div>
+        <div class="login-demo-item"><code>supplier@example.com</code> / <code>demo1234</code></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/image-optimizer.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>

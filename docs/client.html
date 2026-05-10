@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rabbit — Portail Acheteur</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/product_detail.css">
+  <style>
+    /* Catalogue */
+    .catalogue-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px}
+    .product-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;transition:box-shadow .2s,transform .2s;cursor:pointer}
+    .product-card:hover{box-shadow:0 8px 28px rgba(0,0,0,.09);transform:translateY(-2px)}
+    .product-card-img{width:100%;height:160px;object-fit:cover;display:block;background:#f1f5f9}
+    .product-card-img-placeholder{width:100%;height:160px;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:flex;align-items:center;justify-content:center;font-size:40px;color:#cbd5e1}
+    .product-card-body{padding:16px;flex:1;display:flex;flex-direction:column;gap:6px}
+    .product-card-name{font-weight:700;font-size:14px;line-height:1.3}
+    .product-card-sku{font-size:11px;color:#94a3b8;font-weight:500}
+    .product-card-cat{font-size:11px;font-weight:700;background:#ede9fe;color:#6d28d9;display:inline-block;padding:2px 8px;border-radius:12px}
+    .product-card-price{font-size:17px;font-weight:800;color:var(--blue);margin-top:4px}
+    .product-card-footer{padding:12px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+
+    /* Badges stock */
+    .stock-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+    .stock-ok{background:#dcfce7;color:#15803d}.stock-low{background:#fef9c3;color:#92400e}.stock-out{background:#fee2e2;color:#b91c1c}
+
+    /* Boutons carte */
+    .btn-add-cart{flex:1;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:8px 14px;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+    .btn-add-cart:hover{opacity:.88}.btn-add-cart:disabled{opacity:.4;cursor:not-allowed}
+    .btn-detail{background:transparent;border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-family:Manrope,sans-serif;font-size:12px;font-weight:600;cursor:pointer;color:var(--text-secondary);transition:background .15s}
+    .btn-detail:hover{background:#f8fafc}
+
+    /* Panneau détail */
+    .detail-panel{position:fixed;top:0;right:0;width:480px;height:100vh;background:var(--surface);border-left:1px solid var(--border);z-index:400;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);box-shadow:-8px 0 32px rgba(0,0,0,.1)}
+    .detail-panel.open{transform:translateX(0)}
+    .detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:399;display:none}
+    .detail-overlay.open{display:block}
+    .detail-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    .detail-header h3{font-size:16px;font-weight:700}
+    .detail-close{background:transparent;border:none;cursor:pointer;font-size:18px;color:#94a3b8;padding:4px;border-radius:6px;transition:color .15s}
+    .detail-close:hover{color:var(--text)}
+    .detail-body{flex:1;overflow-y:auto;padding:0 0 100px}
+    .detail-img{width:100%;height:200px;object-fit:cover;display:block}
+    .detail-img-placeholder{width:100%;height:200px;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:flex;align-items:center;justify-content:center;font-size:64px;color:#cbd5e1}
+    .detail-section{padding:20px 24px;border-bottom:1px solid var(--border)}
+    .detail-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:12px}
+    .detail-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .detail-meta-label{font-size:11px;color:#94a3b8;margin-bottom:2px}
+    .detail-meta-val{font-size:14px;font-weight:600}
+    .detail-footer{position:absolute;bottom:0;left:0;right:0;padding:16px 24px;background:var(--surface);border-top:1px solid var(--border);display:flex;gap:10px;align-items:center}
+
+    /* Relations */
+    .relation-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+    .relation-item:last-child{border-bottom:none}
+    .relation-item-icon{width:36px;height:36px;border-radius:10px;background:#ede9fe;color:#6d28d9;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+    .relation-item-name{font-weight:600;font-size:13px}
+    .relation-item-meta{font-size:11px;color:#94a3b8;margin-top:2px}
+
+    /* Sélecteur quantité */
+    .qty-selector{display:flex;align-items:center;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+    .qty-btn{width:34px;height:34px;background:#f8fafc;border:none;cursor:pointer;font-size:16px;font-weight:700;color:var(--text);transition:background .15s}
+    .qty-btn:hover{background:#e2e8f0}
+    .qty-display{width:40px;text-align:center;font-weight:700;font-size:14px;border:none;border-left:1px solid var(--border);border-right:1px solid var(--border);line-height:34px;background:var(--surface)}
+
+    /* Panier */
+    .cart-toggle-btn{position:fixed;bottom:28px;right:28px;z-index:300;width:56px;height:56px;border-radius:50%;background:var(--blue);color:#fff;border:none;cursor:pointer;font-size:20px;box-shadow:0 4px 16px rgba(91,94,244,.35);display:flex;align-items:center;justify-content:center;transition:transform .15s}
+    .cart-toggle-btn:hover{transform:scale(1.08)}
+    .cart-count{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:10px;background:#ef4444;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px}
+    .cart-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:498;display:none}
+    .cart-overlay.open{display:block}
+    .cart-panel{position:fixed;top:0;right:0;width:400px;height:100vh;background:var(--surface);border-left:1px solid var(--border);z-index:499;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1)}
+    .cart-panel.open{transform:translateX(0)}
+    .cart-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    .cart-header h3{font-weight:700;font-size:16px}
+    .cart-close{background:none;border:none;cursor:pointer;font-size:18px;color:#94a3b8;padding:4px}
+    .cart-items{flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:12px}
+    .cart-item{display:flex;gap:12px;align-items:center;background:#f8fafc;border-radius:12px;padding:12px}
+    .cart-item-img{width:48px;height:48px;border-radius:8px;object-fit:cover;background:#e2e8f0;flex-shrink:0}
+    .cart-item-img-ph{width:48px;height:48px;border-radius:8px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+    .cart-item-info{flex:1}
+    .cart-item-name{font-weight:600;font-size:13px}
+    .cart-item-price{font-size:12px;color:#94a3b8;margin-top:2px}
+    .cart-item-qty{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px}
+    .cart-item-qty-btn{width:22px;height:22px;border-radius:6px;background:#e2e8f0;border:none;cursor:pointer;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
+    .cart-item-remove{background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;padding:4px}
+    .cart-footer{padding:16px 24px;border-top:1px solid var(--border)}
+    .cart-total{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .cart-total-label{font-size:13px;color:#94a3b8}
+    .cart-total-val{font-size:20px;font-weight:800}
+    .cart-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#94a3b8;gap:8px}
+    .cart-empty i{font-size:40px;opacity:.3}
+    .cart-checkout{width:100%;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:14px;font-family:Manrope,sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+    .cart-checkout:hover{opacity:.88}
+
+    /* Filtres */
+    .filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px}
+    .filter-search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0 14px;flex:1;min-width:200px}
+    .filter-search input{border:none;background:none;outline:none;font-family:Manrope,sans-serif;font-size:13px;padding:10px 0;width:100%}
+    .filter-search i{color:#94a3b8;font-size:13px}
+    .filter-select{padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-family:Manrope,sans-serif;font-size:13px;cursor:pointer}
+    .catalogue-empty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 0;color:#94a3b8;gap:12px}
+    .catalogue-empty i{font-size:36px;opacity:.3}
+
+    .chat-widget{display:none!important}
+  </style>
+</head>
+<body>
+<div class="dash-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-mark">
+        <img src="/logo.svg" alt="Rabbit Logo" width="17" height="17">
+      </div>
+      <div><div class="sidebar-brand-name">Rabbit</div><div class="sidebar-brand-tag">Portail Acheteur</div></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Catalogue</div>
+      <a class="sidebar-item active" onclick="clearSearch()"><i class="fas fa-store"></i>Catalogue MRO</a>
+      <a class="sidebar-item disabled"><i class="fas fa-heart"></i>Favoris</a>
+      <div class="sidebar-section-label">Mes achats</div>
+      <a class="sidebar-item" onclick="toggleCart()">
+        <i class="fas fa-shopping-cart"></i>Panier
+        <span class="sidebar-badge" id="cart-sidebar-badge" style="display:none">0</span>
+      </a>
+      <a class="sidebar-item" onclick="showClientOrdersPanel()"><i class="fas fa-receipt"></i>Mes commandes</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebar-avatar" style="background:var(--blue)">CL</div>
+        <div><div class="sidebar-user-name" id="sidebar-username">Client B2B</div><div class="sidebar-user-role">Acheteur</div></div>
+        <button class="sidebar-logout" onclick="logout()"><i class="fas fa-right-from-bracket"></i></button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="dash-main">
+    <div class="topbar">
+      <div class="topbar-title">Catalogue MRO</div>
+      <div class="topbar-search">
+        <i class="fas fa-search"></i>
+        <input type="text" id="topbar-search" placeholder="Référence, SKU, produit…" oninput="searchCatalogue(this.value)">
+      </div>
+      <div class="topbar-notif" style="position:relative;padding:8px;cursor:pointer" onclick="showClientNotifPanel()">
+        <i class="fas fa-bell" style="font-size:16px;color:#64748b"></i>
+        <div id="notif-dot" style="position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#ef4444;display:none"></div>
+      </div>
+      <div class="topbar-avatar" id="topbar-avatar" style="background:var(--blue)">CL</div>
+    </div>
+
+    <div class="dash-content">
+      <div class="page-header"><h1>Catalogue MRO</h1><p>Recherchez et commandez vos pièces industrielles · filtre actif : <code>is_active = true</code></p></div>
+
+      <div class="filter-bar">
+        <div class="filter-search"><i class="fas fa-search"></i><input type="text" id="cat-search" placeholder="Nom, SKU…" oninput="searchCatalogue(this.value)"></div>
+        <select class="filter-select" id="cat-category" onchange="searchCatalogue()"><option value="">Toutes les catégories</option></select>
+        <select class="filter-select" id="cat-stock" onchange="searchCatalogue()">
+          <option value="">Tous les stocks</option>
+          <option value="ok">Disponible</option>
+          <option value="low">Stock bas</option>
+          <option value="out">Rupture</option>
+        </select>
+      </div>
+
+      <div id="results-label" style="font-size:13px;color:#94a3b8;margin-bottom:16px"></div>
+
+      <!-- Promotions actives (/catalog/promotions/active) -->
+      <div id="promotions-container" style="margin-bottom:16px"></div>
+
+      <div id="catalogue-grid" class="catalogue-grid">
+        <div class="catalogue-empty" style="grid-column:1/-1"><i class="fas fa-spinner fa-spin"></i><p>Chargement du catalogue…</p></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Panneau détail produit -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detail-panel">
+  <div class="detail-header">
+    <h3 id="detail-title">Détail produit</h3>
+    <button class="detail-close" onclick="closeDetail()"><i class="fas fa-xmark"></i></button>
+  </div>
+  <div class="detail-body" id="detail-body"></div>
+  <div class="detail-footer">
+    <div class="qty-selector">
+      <button class="qty-btn" onclick="changeDetailQty(-1)">−</button>
+      <span class="qty-display" id="detail-qty">1</span>
+      <button class="qty-btn" onclick="changeDetailQty(1)">+</button>
+    </div>
+    <button class="btn-add-cart" id="detail-add-btn" onclick="addFromDetail()" style="flex:1">
+      <i class="fas fa-cart-plus"></i>Ajouter au panier
+    </button>
+  </div>
+</div>
+
+<!-- Panier -->
+<button class="cart-toggle-btn" onclick="toggleCart()">
+  <i class="fas fa-shopping-cart"></i>
+  <span class="cart-count" id="cart-count" style="display:none">0</span>
+</button>
+<div class="cart-overlay" id="cart-overlay" onclick="toggleCart()"></div>
+<div class="cart-panel" id="cart-panel">
+  <div class="cart-header"><h3>Panier B2B</h3><button class="cart-close" onclick="toggleCart()"><i class="fas fa-xmark"></i></button></div>
+  <div class="cart-items" id="cart-items">
+    <div class="cart-empty"><i class="fas fa-shopping-cart"></i><p>Votre panier est vide</p></div>
+  </div>
+  <div class="cart-footer">
+    <div class="cart-total">
+      <span class="cart-total-label">Total HT</span>
+      <span class="cart-total-val"><span id="cart-total">0</span> MAD</span>
+    </div>
+    <!-- Checkout = POST /rfqs avec quantity_requested par produit -->
+    <button class="cart-checkout" onclick="checkout()">
+      <i class="fas fa-file-invoice"></i>Demander un devis (RFQ)
+    </button>
+  </div>
+</div>
+
+<!-- Mes commandes (panneau latéral) -->
+<!-- Notifications panel -->
+<div id="notif-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:498;display:none" onclick="closeClientNotifPanel()"></div>
+<div id="notif-panel" class="side-panel">
+  <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+    <h3 style="font-weight:700;font-size:16px">Notifications</h3>
+    <div style="display:flex;gap:8px">
+      <button class="btn-sm" onclick="markAllClientNotifsRead()" style="font-size:11px"><i class="fas fa-check-double"></i> Tout lire</button>
+      <button style="background:none;border:none;cursor:pointer;font-size:18px;color:#94a3b8" onclick="closeClientNotifPanel()"><i class="fas fa-xmark"></i></button>
+    </div>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:0 24px" id="client-notif-list">
+    <div style="text-align:center;padding:40px 0;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i></div>
+  </div>
+</div>
+
+<div id="orders-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:498;display:none" onclick="closeClientOrdersPanel()"></div>
+<div id="orders-panel" class="side-panel side-panel-wide">
+  <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+    <h3 style="font-weight:700;font-size:16px">Mes commandes</h3>
+    <button style="background:none;border:none;cursor:pointer;font-size:18px;color:#94a3b8" onclick="closeClientOrdersPanel()"><i class="fas fa-xmark"></i></button>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:16px 24px">
+    <div style="margin-bottom:12px;font-size:13px;color:#94a3b8" id="client-orders-sub">—</div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em">
+        <th style="padding:8px 4px;text-align:left">Réf.</th>
+        <th style="padding:8px 4px;text-align:left">Total</th>
+        <th style="padding:8px 4px;text-align:left">Statut</th>
+        <th style="padding:8px 4px;text-align:left">Date</th>
+      </tr></thead>
+      <tbody id="client-orders-tbody">
+        <tr><td colspan="4" style="text-align:center;padding:32px 0;color:#94a3b8">⏳</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Panel functions now in client.js -->
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/client.js"></script>
+<script src="js/rabbit_detail_patch.js"></script>
+</body>
+</html>

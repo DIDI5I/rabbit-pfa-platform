@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rabbit — Connexion propriétaire</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/images.css">
+</head>
+<body>
+  <div class="login-wrap">
+    <section class="login-left">
+      <div class="login-brand">
+        <div class="login-brand-mark">
+          <img src="/logo.svg" alt="Rabbit Logo" width="20" height="20">
+        </div>
+        <div class="login-brand-name">Rabbit</div>
+      </div>
+      <div class="login-left-content">
+        <h1>Accès propriétaire <em>Rabbit</em></h1>
+        <p>Cette interface est réservée au propriétaire du site pour la supervision des accès, la gestion des utilisateurs et le pilotage stratégique.</p>
+        <div class="login-features-list">
+          <div class="login-feat"><span class="login-feat-check"><i class="fas fa-shield-alt"></i></span> Authentification renforcée</div>
+          <div class="login-feat"><span class="login-feat-check"><i class="fas fa-user-shield"></i></span> Gestion dédiée des rôles</div>
+          <div class="login-feat"><span class="login-feat-check"><i class="fas fa-chart-line"></i></span> Accès aux rapports et paramètres globaux</div>
+        </div>
+      </div>
+      <div class="login-left-footer">Vous pouvez revenir à la page publique en cliquant sur le bouton ci-dessous.</div>
+    </section>
+
+    <section class="login-right">
+      <h2>Connexion propriétaire</h2>
+      <p>Entrez vos identifiants propriétaires pour accéder à l'administration avancée.</p>
+
+      <div class="form-group">
+        <label for="login-email">Email</label>
+        <input id="login-email" type="email" placeholder="admin@votreentreprise.com" autocomplete="email">
+      </div>
+
+      <div class="form-group">
+        <label for="login-password">Mot de passe</label>
+        <input id="login-password" type="password" placeholder="••••••••••" autocomplete="current-password">
+      </div>
+
+      <div id="login-error" style="display:none;color:#b91c1c;font-size:13px;margin-bottom:16px;"></div>
+      <button id="do-login" class="btn-login">Se connecter →</button>
+
+      <div class="login-demo">
+        <p>Page réservée au propriétaire. Les comptes clients et fournisseurs doivent utiliser la page de connexion standard.</p>
+        <div class="login-demo-item"><a href="login.html" style="color:var(--accent);text-decoration:none;">Connexion client/fournisseur</a></div>
+        <div class="login-demo-item"><a href="landing.html" style="color:var(--accent);text-decoration:none;">Retour au landing</a></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/image-optimizer.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>
