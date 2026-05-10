@@ -32,4 +32,5 @@ class NotificationController
     {
         return $this->notificationService->markAllAsRead();
     }
+    
 }

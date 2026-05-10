@@ -1,0 +1,1031 @@
+/* ═══════════════════════════════════════════════════════════════
+   RABBIT — Product Detail Page CSS Patch
+   Clean fixed version
+   File: frontend/css/product_detail.css
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ============================================================
+   Page bounds safety
+   ============================================================ */
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.dash-content {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* ============================================================
+   Back navigation
+   ============================================================ */
+
+.detail-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "Manrope", sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--color-primary, #6c47ff);
+  background: #fff;
+  border: 1px solid #e7e9f3;
+  border-radius: 12px;
+  cursor: pointer;
+  padding: 10px 14px;
+  margin-bottom: 20px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 14px rgba(30, 18, 80, 0.045);
+  transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.detail-back-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(30, 18, 80, 0.08);
+}
+
+.detail-back-btn svg {
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Product hero layout
+   ============================================================ */
+
+.detail-hero {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.1fr);
+  gap: 34px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  background: #fff;
+  border: 1px solid #e7e9f3;
+  border-radius: 22px;
+  box-shadow: 0 14px 38px rgba(30, 18, 80, 0.07);
+  padding: 28px;
+  margin-bottom: 34px;
+
+  overflow: hidden;
+}
+
+/* ============================================================
+   Gallery column
+   ============================================================ */
+
+.detail-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.detail-main-img-wrap {
+  position: relative;
+  width: 100%;
+  height: clamp(300px, 36vw, 470px);
+  background: #f7f7fb;
+  border: 1px solid #eef0f7;
+  border-radius: 18px;
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.detail-main-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: opacity 0.2s, transform 0.25s;
+}
+
+.detail-main-img-wrap:hover img {
+  transform: scale(1.025);
+}
+
+.detail-thumbnails {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.detail-thumb-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 92px;
+
+  background: #f7f7fb;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  padding: 5px;
+  cursor: pointer;
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.detail-thumb-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.detail-thumb-btn.active,
+.detail-thumb-btn:hover {
+  border-color: var(--color-primary, #6c47ff);
+  box-shadow: 0 0 0 4px rgba(108, 71, 255, 0.12);
+}
+
+.detail-thumb-btn:hover {
+  transform: translateY(-1px);
+}
+
+.detail-thumb-btn.img-missing {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* ============================================================
+   Product info column
+   ============================================================ */
+
+.detail-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.detail-category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+
+  background: rgba(108, 71, 255, 0.08);
+  color: var(--color-primary, #6c47ff);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 5px 12px;
+}
+
+.detail-title {
+  font-family: "Manrope", sans-serif;
+  font-size: clamp(24px, 2.4vw, 38px);
+  font-weight: 900;
+  color: #1a1035;
+  line-height: 1.14;
+  margin: 0;
+  letter-spacing: -0.035em;
+}
+
+.detail-sku {
+  font-family: monospace;
+  font-size: 12px;
+  color: #8b8ca8;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.detail-rating-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.detail-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #f5a623;
+}
+
+.detail-stars svg {
+  color: #f5a623;
+}
+
+.detail-stars svg.empty {
+  color: #ddd;
+}
+
+.detail-rating-text {
+  font-size: 13px;
+  color: #8b8ca8;
+  font-weight: 700;
+}
+
+.detail-description {
+  font-size: 14px;
+  color: #3d3a54;
+  line-height: 1.7;
+  margin: 0;
+  max-width: 720px;
+}
+
+/* ============================================================
+   Specifications
+   ============================================================ */
+
+.detail-specs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.detail-spec-card {
+  background: #f7f7fb;
+  border: 1px solid #eef0f7;
+  border-radius: 14px;
+  padding: 13px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.detail-spec-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #a0a0be;
+}
+
+.detail-spec-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: #1a1035;
+}
+
+.detail-spec-value.price {
+  color: var(--color-primary, #6c47ff);
+  font-size: 16px;
+}
+
+/* ============================================================
+   Availability dots
+   ============================================================ */
+
+.avail-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-right: 5px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.avail-dot.available {
+  background: #22c55e;
+}
+
+.avail-dot.low {
+  background: #f59e0b;
+}
+
+.avail-dot.out {
+  background: #ef4444;
+}
+
+/* ============================================================
+   Promotion banner
+   ============================================================ */
+
+.detail-promo-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  background: linear-gradient(90deg, #fff7ed, #fffbf5);
+  border: 1px solid #fdba74;
+  border-radius: 12px;
+  padding: 10px 14px;
+
+  font-size: 13px;
+  color: #92400e;
+  font-weight: 700;
+}
+
+.detail-promo-banner .promo-tag {
+  background: #f97316;
+  color: #fff;
+  border-radius: 7px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Quantity + CTA
+   ============================================================ */
+
+.detail-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.detail-qty {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid #e0e0f0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.detail-qty button {
+  width: 38px;
+  height: 42px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #6c47ff;
+  font-weight: 900;
+  transition: background 0.12s;
+}
+
+.detail-qty button:hover {
+  background: #f0ecff;
+}
+
+.detail-qty input {
+  width: 44px;
+  height: 42px;
+  border: none;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 900;
+  color: #1a1035;
+  outline: none;
+  font-family: "Manrope", sans-serif;
+}
+
+.detail-qty input::-webkit-inner-spin-button {
+  display: none;
+}
+
+.detail-cta-primary,
+.detail-cta-secondary {
+  min-height: 42px;
+  border-radius: 12px;
+  font-family: "Manrope", sans-serif;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+
+.detail-cta-primary {
+  flex: 1 1 180px;
+  min-width: 170px;
+  background: var(--color-primary, #6c47ff);
+  color: #fff;
+  border: none;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 900;
+  box-shadow: 0 4px 14px rgba(108, 71, 255, 0.28);
+}
+
+.detail-cta-primary:hover {
+  background: #5535e0;
+  box-shadow: 0 6px 18px rgba(108, 71, 255, 0.38);
+  transform: translateY(-1px);
+}
+
+.detail-cta-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.detail-cta-secondary {
+  background: #fff;
+  color: var(--color-primary, #6c47ff);
+  border: 1.5px solid var(--color-primary, #6c47ff);
+  padding: 11px 18px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.detail-cta-secondary:hover {
+  background: #f0ecff;
+}
+
+.detail-cta-secondary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   Trust row
+   ============================================================ */
+
+.detail-trust-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  border-top: 1px solid #f0eff7;
+  padding-top: 14px;
+}
+
+.detail-trust-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: #5c5a75;
+  font-weight: 700;
+  line-height: 1.45;
+  min-width: 0;
+}
+
+.detail-trust-item svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--color-primary, #6c47ff);
+}
+
+/* ============================================================
+   Section title
+   ============================================================ */
+
+.detail-section-title {
+  font-family: "Manrope", sans-serif;
+  font-size: 16px;
+  font-weight: 900;
+  color: #1a1035;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-section-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, #e0e0f0, transparent);
+}
+
+/* ============================================================
+   Related products carousel
+   Clean bounded version: max 5 visible cards
+   ============================================================ */
+
+.detail-relations {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 28px;
+  margin-bottom: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.detail-relation-section {
+  width: 100%;
+  max-width: 100%;
+  background: #fff;
+  border: 1px solid #e7e9f3;
+  border-radius: 22px;
+  padding: 18px 0 20px;
+  overflow: hidden;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.04);
+  box-sizing: border-box;
+}
+
+.detail-relation-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 22px 14px;
+  border-bottom: 1px solid #eef0f6;
+}
+
+.detail-relation-heading .detail-section-title {
+  margin: 0;
+}
+
+.detail-relation-heading span {
+  font-size: 12px;
+  font-weight: 800;
+  color: #9aa0b8;
+}
+
+/* Visible window only: centered, max 5 cards */
+.relation-carousel-wrap {
+  --relation-card-width: 190px;
+  --relation-card-gap: 16px;
+  --visible-cards: 5;
+
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+
+  width: min(
+    100%,
+    calc(
+      (var(--relation-card-width) * var(--visible-cards)) +
+      (var(--relation-card-gap) * (var(--visible-cards) - 1))
+    )
+  );
+
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 18px 0 0;
+  box-sizing: border-box;
+}
+
+/* Fade edges */
+.relation-carousel-wrap::before,
+.relation-carousel-wrap::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 86px;
+  height: 100%;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.relation-carousel-wrap::before {
+  left: 0;
+  background: linear-gradient(
+    90deg,
+    #ffffff 0%,
+    rgba(255, 255, 255, 0.9) 28%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.relation-carousel-wrap::after {
+  right: 0;
+  background: linear-gradient(
+    270deg,
+    #ffffff 0%,
+    rgba(255, 255, 255, 0.9) 28%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+/* Moving track: internal only */
+.relation-carousel-track {
+  display: flex;
+  width: max-content;
+  max-width: none;
+  min-width: max-content;
+  will-change: transform;
+}
+
+.relation-carousel-belt {
+  display: flex;
+  align-items: stretch;
+  gap: var(--relation-card-gap);
+  flex-shrink: 0;
+  padding-right: var(--relation-card-gap);
+}
+
+.relation-carousel-track.marquee-left {
+  animation: relationMarqueeLeft 42s linear infinite;
+}
+
+.relation-carousel-track.marquee-right {
+  animation: relationMarqueeRight 46s linear infinite;
+}
+
+.relation-carousel-wrap:hover .relation-carousel-track {
+  animation-play-state: paused;
+}
+
+@keyframes relationMarqueeLeft {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes relationMarqueeRight {
+  from {
+    transform: translate3d(-50%, 0, 0);
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Related product card */
+.relation-card {
+  width: var(--relation-card-width);
+  min-width: var(--relation-card-width);
+  max-width: var(--relation-card-width);
+  flex: 0 0 var(--relation-card-width);
+
+  background: #fff;
+  border: 1px solid #edf0f7;
+  border-radius: 18px;
+  padding: 12px;
+  cursor: pointer;
+  box-sizing: border-box;
+
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.relation-card:hover {
+  transform: translateY(-4px);
+  border-color: #d9d4ff;
+  box-shadow: 0 14px 34px rgba(86, 62, 214, 0.12);
+}
+
+.relation-card-img {
+  width: 100%;
+  height: 132px;
+  object-fit: contain;
+  border-radius: 14px;
+  background: #f4f6fb;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.relation-card-name {
+  font-size: 13px;
+  font-weight: 900;
+  color: #17142f;
+  line-height: 1.35;
+  min-height: 36px;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.relation-card-sku {
+  margin-top: 5px;
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #9aa0b8;
+}
+
+.relation-card-avail {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #505875;
+}
+
+/* ============================================================
+   Reviews
+   ============================================================ */
+
+.detail-reviews {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  background: #fff;
+  border: 1px solid #e7e9f3;
+  border-radius: 22px;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.04);
+  padding: 26px 30px;
+  margin-bottom: 36px;
+}
+
+.detail-reviews-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.detail-reviews-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.detail-reviews-big-score {
+  font-size: 44px;
+  font-weight: 900;
+  color: #1a1035;
+  line-height: 1;
+}
+
+.detail-reviews-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-reviews-empty {
+  text-align: center;
+  padding: 30px 0;
+  color: #a0a0be;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.detail-reviews-empty svg {
+  margin-bottom: 10px;
+  opacity: 0.4;
+}
+
+.review-item {
+  border-top: 1px solid #f0eff7;
+  padding: 16px 0;
+}
+
+.review-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.review-item-author {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1a1035;
+}
+
+.review-item-date {
+  font-size: 12px;
+  color: #a0a0be;
+}
+
+.review-item-body {
+  font-size: 13px;
+  color: #3d3a54;
+  line-height: 1.6;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+@media (max-width: 1150px) {
+  .detail-hero {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .relation-carousel-wrap {
+    --visible-cards: 4;
+  }
+}
+
+@media (max-width: 900px) {
+  .detail-hero {
+    padding: 22px;
+  }
+
+  .detail-main-img-wrap {
+    height: 330px;
+  }
+
+  .relation-carousel-wrap {
+    --visible-cards: 3;
+  }
+}
+
+@media (max-width: 650px) {
+  .detail-hero {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .detail-main-img-wrap {
+    height: 270px;
+  }
+
+  .detail-thumbnails {
+    gap: 8px;
+  }
+
+  .detail-thumb-btn {
+    height: 72px;
+  }
+
+  .detail-specs {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-trust-row {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-cta-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .detail-qty,
+  .detail-cta-primary,
+  .detail-cta-secondary {
+    width: 100%;
+  }
+
+  .detail-qty {
+    justify-content: space-between;
+  }
+
+  .relation-carousel-wrap {
+    --relation-card-width: 165px;
+    --visible-cards: 2;
+  }
+
+  .relation-card-img {
+    height: 110px;
+  }
+
+  .relation-card-name {
+    font-size: 12px;
+  }
+
+  .detail-reviews {
+    padding: 20px;
+  }
+}
+/* ============================================================
+   FINAL LAYOUT FIX — keep product detail page properly sized
+   ============================================================ */
+
+/* The whole product detail content should behave like a centered page */
+.dash-content > .detail-back-btn,
+.dash-content > .detail-hero,
+.dash-content > .detail-relations,
+.dash-content > .detail-reviews {
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Back button alignment */
+.dash-content > .detail-back-btn {
+  margin-bottom: 18px;
+}
+
+/* Hero should not stretch across the entire monitor */
+.detail-hero {
+  grid-template-columns: minmax(360px, 0.95fr) minmax(430px, 1.05fr);
+  gap: 34px;
+  padding: 30px;
+}
+
+/* Keep image area reasonable */
+.detail-main-img-wrap {
+  height: 420px;
+  max-height: 420px;
+}
+
+/* Prevent thumbnails from becoming giant horizontal bars */
+.detail-thumbnails {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.detail-thumb-btn {
+  height: 86px;
+}
+
+/* Right side spacing */
+.detail-info {
+  justify-content: center;
+  gap: 14px;
+}
+
+/* Specs should stay compact */
+.detail-specs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Related sections should align with hero width */
+.detail-relations {
+  width: 100%;
+}
+
+/* Carousel section inside the same page width */
+.detail-relation-section {
+  width: 100%;
+}
+
+/* Keep the carousel window centered and not tiny */
+.relation-carousel-wrap {
+  --relation-card-width: 180px;
+  --relation-card-gap: 16px;
+  --visible-cards: 5;
+
+  width: min(
+    100%,
+    calc(
+      (var(--relation-card-width) * var(--visible-cards)) +
+      (var(--relation-card-gap) * (var(--visible-cards) - 1))
+    )
+  );
+
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Slightly smaller cards, better inside 1180px page */
+.relation-card {
+  width: var(--relation-card-width);
+  min-width: var(--relation-card-width);
+  max-width: var(--relation-card-width);
+  flex-basis: var(--relation-card-width);
+}
+
+/* Reviews align too */
+.detail-reviews {
+  width: 100%;
+}
+
+/* Responsive */
+@media (max-width: 1250px) {
+  .dash-content > .detail-back-btn,
+  .dash-content > .detail-hero,
+  .dash-content > .detail-relations,
+  .dash-content > .detail-reviews {
+    max-width: calc(100vw - 64px);
+  }
+}
+
+@media (max-width: 1000px) {
+  .detail-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-main-img-wrap {
+    height: 360px;
+    max-height: 360px;
+  }
+
+  .relation-carousel-wrap {
+    --visible-cards: 4;
+  }
+}
+
+@media (max-width: 760px) {
+  .dash-content > .detail-back-btn,
+  .dash-content > .detail-hero,
+  .dash-content > .detail-relations,
+  .dash-content > .detail-reviews {
+    max-width: calc(100vw - 32px);
+  }
+
+  .detail-hero {
+    padding: 18px;
+  }
+
+  .detail-main-img-wrap {
+    height: 280px;
+    max-height: 280px;
+  }
+
+  .relation-carousel-wrap {
+    --visible-cards: 2;
+    --relation-card-width: 165px;
+  }
+}

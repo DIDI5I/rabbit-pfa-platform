@@ -160,7 +160,7 @@ $router->getRoute('/purchase-lots/{id}', [PurchaseLotController::class, 'show'])
 
 // ORDERS
 $router->getRoute('/orders', [OrderController::class, 'index'])
-       ->only([OwnerMiddleware::class]);
+       ->only([AuthMiddleware::class]);
 
 $router->postRoute('/orders', [OrderController::class, 'store'])
        ->only([AuthMiddleware::class]);

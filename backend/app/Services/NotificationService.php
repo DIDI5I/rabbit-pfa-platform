@@ -5,14 +5,21 @@ namespace App\Services;
 use App\Core\Auth;
 use App\Repositories\NotificationRepository;
 use App\Support\ApiResponse;
+use App\Services\EmailService;
+use App\Repositories\UserRepository;
+use Throwable;
 
 class NotificationService
 {
+    private UserRepository $userRepository;
+    private EmailService $emailService;
     private NotificationRepository $notificationRepository;
 
     public function __construct()
     {
         $this->notificationRepository = new NotificationRepository();
+        $this->userRepository = new UserRepository();
+        $this->emailService = new EmailService();
     }
 
     public function notifyUser(
@@ -32,6 +39,22 @@ class NotificationService
             $referenceType,
             $referenceId
         );
+
+        $user = $this->userRepository->findNotificationTargetById($userId);
+
+        if ($user && !empty($user['email'])) {
+            $this->sendEmailSafely(
+                $user['email'],
+                $title,
+                $message,
+                [
+                    'user_id' => $userId,
+                    'type' => $type,
+                    'reference_type' => $referenceType,
+                    'reference_id' => $referenceId,
+                ]
+            );
+        }
     }
 
     public function notifyRole(
@@ -51,6 +74,27 @@ class NotificationService
             $referenceType,
             $referenceId
         );
+
+        $users = $this->userRepository->findActiveByRole($role);
+
+        foreach ($users as $user) {
+            if (empty($user['email'])) {
+                continue;
+            }
+
+            $this->sendEmailSafely(
+                $user['email'],
+                $title,
+                $message,
+                [
+                    'role' => $role,
+                    'user_id' => $user['id'] ?? null,
+                    'type' => $type,
+                    'reference_type' => $referenceType,
+                    'reference_id' => $referenceId,
+                ]
+            );
+        }
     }
 
     public function list(array $filters = []): array
@@ -158,6 +202,30 @@ class NotificationService
                 'updated_count' => $updatedCount,
             ]
         );
+    }
+    private function sendEmailSafely(
+        string $email,
+        string $title,
+        string $message,
+        array $context = []
+    ): void {
+        try {
+            $sent = $this->emailService->sendNotificationEmail(
+                $email,
+                $title,
+                $message
+            );
+
+            if (!$sent) {
+                error_log('Rabbit email notification was not sent: ' . json_encode([
+                    'email' => $email,
+                    'title' => $title,
+                    'context' => $context,
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
+        } catch (Throwable $e) {
+            error_log('Rabbit email notification failed: ' . $e->getMessage());
+        }
     }
 
     private function parseBool(mixed $value): ?bool

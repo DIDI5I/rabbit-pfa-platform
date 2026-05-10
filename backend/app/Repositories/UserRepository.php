@@ -54,4 +54,31 @@ class UserRepository extends Repository
             )
             ->fetchMany();
     }
+
+    public function findNotificationTargetById(int $id): ?array
+    {
+        return $this
+            ->query(
+                "SELECT id, name, email, role
+                FROM users
+                WHERE id = ?
+                AND is_active = 1
+                LIMIT 1",
+                [$id]
+            )
+            ->fetchOne();
+    }
+
+    public function findActiveByRole(string $role): array
+    {
+        return $this
+            ->query(
+                "SELECT id, name, email, role
+                FROM users
+                WHERE role = ?
+                AND is_active = 1",
+                [$role]
+            )
+            ->fetchMany();
+    }
 }
